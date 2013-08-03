@@ -181,11 +181,11 @@ module Ampv
 
     def initialize(x, y, w, h, is_visible)
       buttons = {
-        [ Gtk::Stock::OPEN,    "Open"             ] => lambda { signal_emit("open_file_chooser") },
-        [ Gtk::Stock::GO_UP,   "Move Up"          ] => lambda { move_selected_up                 },
-        [ Gtk::Stock::GO_DOWN, "Move Down"        ] => lambda { move_selected_down               },
-        [ Gtk::Stock::REMOVE,  "Remove Selected"  ] => lambda { remove_selected                  },
-        [ Gtk::Stock::CLEAR,   "Clear Playlist"   ] => lambda { clear                            }
+        [ Gtk::Stock::OPEN,    "Add to Playlist" ] => lambda { signal_emit("open_file_chooser") },
+        [ Gtk::Stock::GO_UP,   "Move Up"         ] => lambda { move_selected_up                 },
+        [ Gtk::Stock::GO_DOWN, "Move Down"       ] => lambda { move_selected_down               },
+        [ Gtk::Stock::REMOVE,  "Remove Selected" ] => lambda { remove_selected                  },
+        [ Gtk::Stock::CLEAR,   "Clear Playlist"  ] => lambda { clear                            }
       }
 
       super()
@@ -268,7 +268,7 @@ module Ampv
       vbox.pack_start(hbox, false)
 
       @menu = Gtk::Menu.new
-      Hash[Array(buttons)[-2, 2]].each { |k, v|
+      buttons.each { |k, v|
         item = Gtk::ImageMenuItem.new(k[1])
         item.image = Gtk::Image.new(k[0], Gtk::IconSize::MENU)
         item.signal_connect("activate") { v.call }
