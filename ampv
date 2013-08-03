@@ -116,11 +116,11 @@ module Ampv
 
     def scrobble_update
       watched = 0
-      while watched < @length * 0.6
+      while watched < @length * 0.5
         sleep(1)
         watched += 1 unless @is_paused
       end
-      system("#{SCROBBLER} \"#{@playing}\"")
+      system("#{@scrobbler} \"#{@playing}\"")
     end
 
     def signal_do_file_changed(file) end
