@@ -175,7 +175,6 @@ module Ampv
 
     type_register
     signal_new("play_entry", GLib::Signal::RUN_FIRST, nil, nil, String)
-    signal_new("drop_received", GLib::Signal::RUN_FIRST, nil, nil, String)
     signal_new("playing_removed", GLib::Signal::RUN_FIRST, nil, nil)
     signal_new("open_file_chooser", GLib::Signal::RUN_FIRST, nil, nil)
 
@@ -204,10 +203,6 @@ module Ampv
 
       signal_connect("key_press_event") { |_w, e|
         hide_on_delete if e.keyval == Gdk::Keyval::GDK_Escape
-      }
-      signal_connect("drag_data_received") { |_w, dc, _x, _y, sd|
-        (file = URI.decode(sd.data).strip).slice!("file://")
-        signal_emit("drop_received", file)
       }
 
       vbox = Gtk::VBox.new(false, 10)
@@ -374,7 +369,6 @@ module Ampv
 
   private
     def signal_do_play_entry(file) end
-    def signal_do_drop_received(file) end
     def signal_do_playing_removed() end
     def signal_do_open_file_chooser() end
   end
@@ -424,10 +418,7 @@ module Ampv
       signal_connect("scroll_event") { |w, e| handle_mouse_event(e) }
       signal_connect("button_press_event") { |w, e| handle_mouse_event(e) }
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
-      signal_connect("drag_data_received") { |w, dc, x, y, sd|
-        (file = URI.decode(sd.data).strip).slice!("file://")
-        load_file(file)
-      }
+      signal_connect("drag_data_received") { |w, dc, x, y, sd| handle_drop_event(sd, true, false) }
 
       vbox = Gtk::VBox.new
       add(vbox)
@@ -464,7 +455,7 @@ module Ampv
                                @config["playlist_height"],
                                @config["playlist_visible"])
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
-      @playlist.signal_connect("drop_received") { |w, file| load_file(file, true, true) }
+      @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd| handle_drop_event(sd, false) }
       @playlist.signal_connect("play_entry") { |w, file| load_file(file, false, false, false, true) }
       @playlist.signal_connect("playing_removed") { @mpv.send("stop"); @really_stop = true }
 
@@ -620,6 +611,17 @@ module Ampv
       end
 
       return true
+    end
+
+    def handle_drop_event(e, play, replace=false)
+      files = URI.decode(e.data).gsub("file://", "").split("\r\n")
+      p files
+      @playlist.clear if replace
+
+      files.each { |f|
+        load_file(f, true, play ? false : true)
+        play = false
+      }
     end
 
     def process_cmd(cmd)
