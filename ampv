@@ -459,10 +459,10 @@ module Ampv
       vbox.pack_start(@mpv)
 
       @playlist = Playlist.new(@config["playlist_x"],
-                                 @config["playlist_y"],
-                                 @config["playlist_width"],
-                                 @config["playlist_height"],
-                                 @config["playlist_visible"])
+                               @config["playlist_y"],
+                               @config["playlist_width"],
+                               @config["playlist_height"],
+                               @config["playlist_visible"])
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drop_received") { |w, file| load_file(file, true, true) }
       @playlist.signal_connect("play_entry") { |w, file| load_file(file, false, false, false, true) }
@@ -489,24 +489,24 @@ module Ampv
 
     def load_config
       @config = {
-        "width"           			 => Gdk::Screen.default.width > 1280 ? 1280 : 853,
-        "height"          			 => Gdk::Screen.default.width > 1280 ? 726  : 486,
-        "x"               			 => -1,
-        "y"               			 => -1,
+        "width"                  => Gdk::Screen.default.width > 1280 ? 1280 : 853,
+        "height"                 => Gdk::Screen.default.width > 1280 ? 726  : 486,
+        "x"                      => -1,
+        "y"                      => -1,
         "fullscreen_progressbar" => false,
         "progress_bar_visible"   => true,
         "progress_bar_height"    => 6,
         "bar_color"              => "#8f5b5b",
         "head_color"             => "#c48181",
-        "playlist_width"  			 => 360,
-        "playlist_height" 			 => 550,
-        "playlist_x"      			 => 0,
-        "playlist_y"      			 => 0,
-        "playlist_visible" 			 => true,
+        "playlist_width"         => 360,
+        "playlist_height"        => 550,
+        "playlist_x"             => 0,
+        "playlist_y"             => 0,
+        "playlist_visible"       => true,
         "always_save_position"   => false,
         "scrobbler"              => "",
-        "playlist_selected" 		 => "",
-        "playlist"        			 => [ ],
+        "playlist_selected"      => "",
+        "playlist"               => [ ],
       }
 
       if File.exists?(MAIN_CONF)
