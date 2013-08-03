@@ -678,29 +678,36 @@ module Ampv
                                           [ Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL ],
                                           [ Gtk::Stock::OPEN,   Gtk::Dialog::RESPONSE_ACCEPT ])
       dialog.select_multiple = true
+      do_not_play = @playlist.count > 0
 
       filter = Gtk::FileFilter.new
       filter.name = "Video Files"
       VIDEO_EXTS.each { |x| filter.add_pattern("*#{x}") }
 
       dialog.add_filter(filter)
-      dialog.filenames.each { |x| load_file(x, true, true) } if dialog.run == Gtk::Dialog::RESPONSE_ACCEPT
+      dialog.filenames.each { |x|
+        load_file(x, true, do_not_play)
+        do_not_play = true
+      } if dialog.run == Gtk::Dialog::RESPONSE_ACCEPT
       dialog.destroy
     end
 
     def quit(watch_later=false)
-      watch_later = true if @config["save_position"]
-      @config["x"], @config["y"],
-      @config["width"], @config["height"] = window.geometry unless window.state.fullscreen?
-      @config["playlist_x"], @config["playlist_y"],
-      @config["playlist_width"], @config["playlist_height"] = @playlist.window.geometry
+      @config["x"],
+      @config["y"],
+      @config["width"],
+      @config["height"]               = window.geometry unless window.state.fullscreen?
+      @config["playlist_x"],
+      @config["playlist_y"],
+      @config["playlist_width"],
+      @config["playlist_height"]      = @playlist.window.geometry
       @config["playlist_visible"]     = @playlist.visible?
       @config["playlist_selected"]    = @playing
       @config["playlist"]             = @playlist.get_entries.join("|")
       @config["progress_bar_visible"] = @progress_bar.visible?
       File.open(MAIN_CONF, "w") { |file| @config.each { |k, v| file.puts("#{k}=#{v}") } }
 
-      @mpv.quit(watch_later)
+      @mpv.quit(@config["always_save_position"] ? true : watch_later)
       Gtk.main_quit
     end
   end
