@@ -418,7 +418,9 @@ module Ampv
       signal_connect("scroll_event") { |w, e| handle_mouse_event(e) }
       signal_connect("button_press_event") { |w, e| handle_mouse_event(e) }
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
-      signal_connect("drag_data_received") { |w, dc, x, y, sd| handle_drop_event(sd, true, false) }
+      signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
+        handle_drop_event(sd.data, dc, time, false, false)
+      }
 
       vbox = Gtk::VBox.new
       add(vbox)
@@ -455,7 +457,9 @@ module Ampv
                                @config["playlist_height"],
                                @config["playlist_visible"])
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
-      @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd| handle_drop_event(sd, false) }
+      @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
+        handle_drop_event(sd.data, dc, time)
+      }
       @playlist.signal_connect("play_entry") { |w, file| load_file(file, false, false, false, true) }
       @playlist.signal_connect("playing_removed") { @mpv.send("stop"); @really_stop = true }
 
@@ -613,15 +617,15 @@ module Ampv
       return true
     end
 
-    def handle_drop_event(e, play, replace=false)
-      files = URI.decode(e.data).gsub("file://", "").split("\r\n")
-      p files
+    def handle_drop_event(data, context, time, do_not_play=false, replace=false)
+      files = URI.decode(data).gsub("file://", "").split("\r\n")
       @playlist.clear if replace
 
       files.each { |f|
-        load_file(f, true, play ? false : true)
-        play = false
+        load_file(f, true, do_not_play)
       }
+
+      Gtk::Drag.finish(context, true, true, time)
     end
 
     def process_cmd(cmd)

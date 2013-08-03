@@ -1,4 +1,4 @@
-# Ampv
+# ampv
 
 A minimal GTK frontend for mpv written in ruby.
 
