@@ -43,12 +43,11 @@ module Ampv
       if @thread.nil?
         @fifo = Fifo.new(@mpv_fifo, :w, :nowait)
 
-        # should mouseinput be no-mouseinput?
         cmd = "#{@mpv_path} \
           --identify \
           --idle \
           --input-file=#{@mpv_fifo} \
-          --mouseinput \
+          --no-mouseinput \
           --msglevel=all=2 \
           --msglevel=global=4 \
           --wid=#{@socket.id} #{@mpv_options}"
@@ -99,11 +98,12 @@ module Ampv
           signal_emit("time_pos_changed", line.rpartition("=").last.to_f)
         end
 
-        puts(line) unless line.include?("ANS_time-pos=") or
-                          line.start_with?("ANS_ERROR") or
-                          line.start_with?("Failed to get") or
-                          line.start_with?("Command ") or
-                          not @debug
+        if @debug or line.start_with?("Error")
+          puts(line) unless line.include?("ANS_time-pos=") or
+                            line.start_with?("ANS_ERROR") or
+                            line.start_with?("Failed to get") or
+                            line.start_with?("Command ")
+        end
       end
     end
 
@@ -610,8 +610,7 @@ module Ampv
     def handle_seek_event(e)
       if e.event_type == Gdk::Event::BUTTON_PRESS and e.button == 1
         pos = e.x / allocation.width * @length.to_f
-        @mpv.send("no-osd seek #{pos} absolute")
-        @progress_bar.value = pos / @length.to_f
+        seek("seek #{pos} absolute")
       end
 
       return true
@@ -621,8 +620,8 @@ module Ampv
       files = URI.decode(data).gsub("file://", "").split("\r\n")
       @playlist.clear if replace
 
-      files.each { |f|
-        load_file(f, true, do_not_play)
+      files.each { |x|
+        load_file(x, true, do_not_play)
       }
 
       Gtk::Drag.finish(context, true, true, time)
@@ -636,6 +635,10 @@ module Ampv
         @mpv.play_pause
       when "cycle playlist"
         @playlist.visible? ? @playlist.hide : @playlist.show
+      when /seek /
+        seek(cmd)
+      when /add chapter/
+        seek(cmd)
       when "playlist_next"
         load_file(@playlist.get_next, false)
       when "playlist_prev"
@@ -651,6 +654,13 @@ module Ampv
       else
         @mpv.send(cmd) if cmd
       end
+    end
+
+    def seek(cmd)
+      cmd = "no-osd " + cmd unless cmd.start_with?("no-osd") or
+                               not @progress_bar.visible?
+      @mpv.send(cmd)
+      @mpv.send("get_property time-pos")
     end
 
     def toggle_fullscreen
