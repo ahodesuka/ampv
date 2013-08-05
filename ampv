@@ -665,11 +665,10 @@ module Ampv
 
     def toggle_fullscreen
       if window.state.fullscreen?
-        @progress_bar.set_height_request(@config["progress_bar_height"]) if @progress_bar.visible?
+        @progress_bar.show unless @progress_bar_user_hidden
         unfullscreen
       else
-        @progress_bar.set_height_request(0) unless @config["fullscreen_progressbar"] or
-                                            not @progress_bar.visible?
+        @progress_bar.hide unless @config["fullscreen_progressbar"]
         fullscreen
       end
     end
@@ -677,8 +676,10 @@ module Ampv
     def toggle_progress_bar
       if @progress_bar.visible?
         @progress_bar.hide
+        @progress_bar_user_hidden = true
       else
         @progress_bar.show
+        @progress_bar_user_hidden = false
       end
     end
 
