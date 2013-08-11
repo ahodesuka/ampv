@@ -66,7 +66,7 @@ module Ampv
 
     def play_pause
       send("cycle pause")
-      @is_paused = @is_paused  ? false : true
+      @is_paused = @is_paused ? false : true
     end
 
     def quit(watch_later)
@@ -442,12 +442,9 @@ module Ampv
       @mpv.signal_connect("time_pos_changed") { |w, pos| @progress_bar.value = pos / @length.to_f }
       @mpv.signal_connect("stopped") {
         @progress_bar.value = 0
-        if @really_stop
-          set_title(PACKAGE)
-          @really_stop = false
-        else
-          load_file(@playlist.get_next, false)
-        end
+        set_title(PACKAGE)
+        load_file(@playlist.get_next, false) unless @really_stop
+        @really_stop = false
       }
       vbox.pack_start(@mpv)
 
