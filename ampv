@@ -419,7 +419,7 @@ module Ampv
       signal_connect("button_press_event") { |w, e| handle_mouse_event(e) }
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
       signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
-        handle_drop_event(sd.data, dc, time, false, false)
+        handle_drop_event(sd.data, dc, time)
       }
 
       vbox = Gtk::VBox.new
@@ -443,7 +443,11 @@ module Ampv
       @mpv.signal_connect("stopped") {
         @progress_bar.value = 0
         set_title(PACKAGE)
-        load_file(@playlist.get_next, false) unless @really_stop
+        if @really_stop and window.state.fullscreen?
+          toggle_fullscreen
+        elsif not @really_stop
+          load_file(@playlist.get_next, false)
+        end
         @really_stop = false
       }
       vbox.pack_start(@mpv)
@@ -455,7 +459,7 @@ module Ampv
                                @config["playlist_visible"])
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
-        handle_drop_event(sd.data, dc, time)
+        handle_drop_event(sd.data, dc, time, true, false)
       }
       @playlist.signal_connect("play_entry") { |w, file| load_file(file, false, false, false, true) }
       @playlist.signal_connect("playing_removed") { @mpv.send("stop"); @really_stop = true }
@@ -613,7 +617,7 @@ module Ampv
       return true
     end
 
-    def handle_drop_event(data, context, time, do_not_play=false, replace=false)
+    def handle_drop_event(data, context, time, do_not_play=false, replace=true)
       files = URI.decode(data).gsub("file://", "").split("\r\n")
       @playlist.clear if replace
 
