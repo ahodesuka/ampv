@@ -28,7 +28,7 @@ module Ampv
       @scrobbler   = scrobbler
       @mpv_path    = "/usr/bin/mpv"
       @mpv_options = args.join(" ")
-      @mpv_fifo    = "/tmp/mpv.fifo"
+      @mpv_fifo    = "/tmp/mpv.fifo." + Process.pid.to_s
 
       super()
 
@@ -72,6 +72,8 @@ module Ampv
     def quit(watch_later)
       send("quit" + (watch_later ? "_watch_later" : ""))
       @thread.join unless @thread.nil? or not @thread.alive?
+      @fifo.close
+      File.delete(@mpv_fifo)
     end
 
   private
@@ -81,25 +83,25 @@ module Ampv
       until @pipe.nil? or @pipe.closed? or @pipe.eof?
         line = @pipe.readline.chomp
         if line.include?("ID_FILENAME=")
-          signal_emit("file_changed", (@playing = line.rpartition("=").last))
+          signal_emit("file_changed", (@playing = line.partition("ID_FILENAME=").last))
           send("get_property pause") # saved position also saves play state
 
           @prog_thread.kill unless @prog_thread.nil? or not @prog_thread.alive?
           @prog_thread = Thread.new { progress_update }
 
           @scrobble_thread.kill unless @scrobble_thread.nil? or not @scrobble_thread.alive?
-          @scrobble_thread = Thread.new { scrobble_update } unless @scrobbler.empty?
-        elsif line.include?("ID_LENGTH=")
+          @scrobble_thread = Thread.new { scrobble_update } unless @scrobbler.empty? or @playing =~ /^https?:\/\//
+        elsif line.start_with?("ID_LENGTH=")
           signal_emit("length_changed", (@length = line.rpartition("=").last.to_i))
-        elsif line.include?("ANS_pause=")
+        elsif line.start_with?("ANS_pause=")
           @is_paused = line.rpartition("=").last == "yes"
           play_pause if @force_play and @is_paused
-        elsif line.include?("ANS_time-pos=")
+        elsif line.start_with?("ANS_time-pos=")
           signal_emit("time_pos_changed", line.rpartition("=").last.to_f)
         end
 
         if @debug or line.start_with?("Error")
-          puts(line) unless line.include?("ANS_time-pos=") or
+          puts(line) unless line.start_with?("ANS_time-pos=") or
                             line.start_with?("ANS_ERROR") or
                             line.start_with?("Failed to get") or
                             line.start_with?("Command ")
@@ -120,7 +122,7 @@ module Ampv
         sleep(1)
         watched += 1 unless @is_paused
       end
-      system("#{@scrobbler} \"#{@playing}\"")
+      IO.popen([ @scrobbler, @playing ])
     end
 
     def signal_do_file_changed(file) end
@@ -380,7 +382,7 @@ module Ampv
 
     MAIN_CONF  = "#{ENV["HOME"]}/.config/ampv.conf"
     INPUT_CONF = "#{ENV["HOME"]}/.mpv/input.conf"
-    VIDEO_EXTS = [ ".avi", ".mkv", ".mp4", ".mpeg", ".mpg", ".ogm" ]
+    VIDEO_EXTS = [ ".avi", ".mkv", ".mp4", ".mpeg", ".mpg", ".ogm", ".ogv" ]
     KEY_NAMES  = {
       "esc"         => "Escape",
       "space"       => "space",
@@ -419,7 +421,7 @@ module Ampv
       signal_connect("button_press_event") { |w, e| handle_mouse_event(e) }
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
       signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
-        handle_drop_event(sd.data, dc, time)
+        handle_drop_event(sd.data, dc, time, false, true)
       }
 
       vbox = Gtk::VBox.new
@@ -442,11 +444,13 @@ module Ampv
       @mpv.signal_connect("time_pos_changed") { |w, pos| @progress_bar.value = pos / @length.to_f }
       @mpv.signal_connect("stopped") {
         @progress_bar.value = 0
+        next_file = @playlist.get_next
+        @really_stop = next_file.nil? or @really_stop
         set_title(PACKAGE)
         if @really_stop and window.state.fullscreen?
           toggle_fullscreen
         elsif not @really_stop
-          load_file(@playlist.get_next, false)
+          load_file(next_file, false)
         end
         @really_stop = false
       }
@@ -508,9 +512,9 @@ module Ampv
       if File.exists?(MAIN_CONF)
         File.readlines(MAIN_CONF).each { |line|
           key, _, val = line.partition("=")
-          next unless @config.has_key?(key) and not key.start_with?("#")
-
+          key = key.strip
           val = val.strip
+          next unless @config.has_key?(key) and not key.start_with?("#")
 
           if @config[key].is_a?(Integer)
             val = val.to_i
@@ -573,17 +577,18 @@ module Ampv
     end
 
     def load_file(file, add_to_playlist=true, do_not_play=false, auto_add=true, force_play=false)
-      return if file.nil? or file.empty? or
-        not VIDEO_EXTS.include?(File.extname(file).downcase)
+      return if file.nil? or file.empty?
+      file = File.expand_path(file) if file[0] == "~"
 
       if add_to_playlist
-        if @playlist.count == 0 and auto_add
-          dir     = File.dirname(file)
+        if @playlist.count == 0 and auto_add and file !~ /^https?:\/\//
+          dir     = File.directory?(file) ? file : File.dirname(file)
           entries = Dir.entries(dir).sort
-          entries.delete_if { |x| x.start_with?(".") or not VIDEO_EXTS.include?(File.extname(x)) }
+          entries.delete_if { |x| x.start_with?(".") or not valid_video_file(x) }
           entries.map { |x|
             x = dir + "/" + x
             @playlist.add_file(x)
+            file = x if file == dir
           }
         else
           @playlist.add_file(file)
@@ -617,12 +622,12 @@ module Ampv
       return true
     end
 
-    def handle_drop_event(data, context, time, do_not_play=false, replace=true)
+    def handle_drop_event(data, context, time, do_not_play, replace)
       files = URI.decode(data).gsub("file://", "").split("\r\n")
       @playlist.clear if replace
 
       files.each { |x|
-        load_file(x, true, do_not_play)
+        load_file(x, true, do_not_play) if valid_video_file(x)
       }
 
       Gtk::Drag.finish(context, true, true, time)
@@ -684,6 +689,12 @@ module Ampv
       end
     end
 
+    def valid_video_file(x)
+      return (VIDEO_EXTS.include?(File.extname(x)) or
+              IO.popen([ "file", "-b", "--mime-type", x ]).read.chomp.start_with?("video"))
+    end
+
+
     def open_file_chooser
       dialog = Gtk::FileChooserDialog.new("Open File - #{PACKAGE}",
                                           self, Gtk::FileChooser::ACTION_OPEN, nil,
@@ -695,8 +706,13 @@ module Ampv
       filter = Gtk::FileFilter.new
       filter.name = "Video Files"
       VIDEO_EXTS.each { |x| filter.add_pattern("*#{x}") }
-
       dialog.add_filter(filter)
+
+      filterAll = Gtk::FileFilter.new
+      filterAll.name = "All Files"
+      filterAll.add_pattern("*.*")
+      dialog.add_filter(filterAll)
+
       dialog.filenames.each { |x|
         load_file(x, true, do_not_play)
         do_not_play = true
