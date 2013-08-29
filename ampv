@@ -327,6 +327,7 @@ module Ampv
       @model.each { |m, p, iter|
         return iter.next! ? iter[0] : nil if iter[0] == @playing
       }
+      return nil
     end
 
     def get_prev
