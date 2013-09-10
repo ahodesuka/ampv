@@ -122,7 +122,7 @@ module Ampv
         sleep(1)
         watched += 1 unless @is_paused
       end
-      IO.popen([ @scrobbler, @playing ])
+      system("#{@scrobbler} \"#{@playing}\"")
     end
 
     def signal_do_file_changed(file) end
@@ -692,7 +692,7 @@ module Ampv
 
     def valid_video_file(x)
       return (VIDEO_EXTS.include?(File.extname(x)) or
-              IO.popen([ "file", "-b", "--mime-type", x ]).read.chomp.start_with?("video"))
+              `file -b --mime-type "#{x}"`.start_with?("video"))
     end
 
 
