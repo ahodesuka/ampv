@@ -47,7 +47,7 @@ module Ampv
           --identify \
           --idle \
           --input-file=#{@mpv_fifo} \
-          --no-mouseinput \
+          --no-mouse-movements \
           --msglevel=all=2 \
           --msglevel=global=4 \
           --wid=#{@socket.id} #{@mpv_options}"
