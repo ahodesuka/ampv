@@ -1,3 +1,10 @@
+PATH
+  remote: .
+  specs:
+    ampv (1.0.0)
+      gtk2
+      ruby-fifo
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -23,5 +30,4 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  gtk2
-  ruby-fifo
+  ampv!

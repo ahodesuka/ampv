@@ -1,14 +1,12 @@
 # ampv
 
-A minimal GTK frontend for [mpv](https://github.com/mpv-player/mpv) written in ruby.
+A minimal GTK2 frontend for [mpv](https://github.com/mpv-player/mpv) written in ruby.
 
 ## Installation
 
-    $ git clone https://github.com/ahodesuka/ampv.git
-    $ cd ampv
-    $ bundle install
+    $ gem install ampv
 
-You can then move the ampv executable to a directory included in your `$PATH`
+Ensure `~/.gem/ruby/**/bin` is in your `$PATH`.
 
 ## Usage
 
