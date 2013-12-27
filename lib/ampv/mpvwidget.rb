@@ -39,8 +39,7 @@ module Ampv
           --input-file=#{@mpv_fifo} \
           --no-mouse-movements \
           --cursor-autohide=no \
-          --msglevel=all=2 \
-          --msglevel=global=4 \
+          --msglevel=all=info:global=info \
           --wid=#{@socket.id} #{@mpv_options}"
         @thread = Thread.new { slave_reader(cmd) }
       end
@@ -101,17 +100,17 @@ module Ampv
       scrobbled = false
       watched = 0
 
-      while true
+      loop {
         send("get_property time-pos") unless @is_paused
 
-        if not @scrobbler.nil? and not scrobbled and watched >= @length * 0.5
+        unless @scrobbler.nil? or scrobbled or watched < @length * 0.5
           system("#{@scrobbler} \"#{@playing}\"")
           scrobbled = true
         end
 
         sleep(1)
         watched += 1 unless @is_paused
-      end
+      }
     end
 
     def signal_do_file_changed(file) end

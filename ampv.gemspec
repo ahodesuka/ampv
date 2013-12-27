@@ -21,4 +21,5 @@ Gem::Specification.new { |s|
   s.add_runtime_dependency("gtk2")
   s.add_runtime_dependency("ruby-fifo")
   s.requirements << "gtk2"
+  s.requirements << "mpv"
 }

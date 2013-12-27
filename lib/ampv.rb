@@ -106,7 +106,7 @@ module Ampv
                                             @config["progress_bar_height"])
       @progress_bar.add_events(Gdk::Event::BUTTON_PRESS_MASK)
       @progress_bar.signal_connect("button_press_event") { |w, e| handle_seek_event(e) }
-      vbox.pack_start(@progress_bar, false, false)
+      vbox.pack_start(@progress_bar, false)
 
       show_all
       @mpv.start
