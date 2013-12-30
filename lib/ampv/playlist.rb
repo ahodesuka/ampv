@@ -23,10 +23,6 @@ module Ampv
       set_skip_taskbar_hint(true)
       move(x, y)
 
-      Gtk::Drag.dest_set(self, Gtk::Drag::DEST_DEFAULT_ALL,
-                         [ [ "text/uri-list", 0, 0 ] ],
-                         Gdk::DragContext::ACTION_LINK)
-
       signal_connect("show") { move(@pos[0], @pos[1]) unless @pos.nil? }
       signal_connect("hide") { @pos = window.root_origin }
       signal_connect("delete_event") { hide_on_delete }

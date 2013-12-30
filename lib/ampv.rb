@@ -47,6 +47,7 @@ module Ampv
       Gtk::Drag.dest_set(self, Gtk::Drag::DEST_DEFAULT_ALL,
                          [ [ "text/uri-list", 0, 0 ] ],
                          Gdk::DragContext::ACTION_LINK)
+      add_events(Gdk::Event::POINTER_MOTION_MASK)
 
       signal_connect("delete_event") { quit }
       signal_connect("scroll_event") { |w, e| handle_mouse_event(e) }
@@ -55,14 +56,22 @@ module Ampv
       signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
         handle_drop_event(sd.data, dc, time, false, true)
       }
+      signal_connect("motion_notify_event") {
+        window.set_cursor(LEFT_PTR)
+        GLib::Source.remove(@cursor_timeout) if @cursor_timeout
+        @cursor_timeout = GLib::Timeout.add(1000) {
+          window.set_cursor(BLANK_CURSOR)
+        } unless @mpv.is_paused
+      }
 
       vbox = Gtk::VBox.new
       add(vbox)
 
       args = process_args
+      print_version if args.include?("--version")
       load_bindings
 
-      @mpv = MPvWidget.new(args, @config["scrobbler"])
+      @mpv = MpvWidget.new(args, @config["scrobbler"])
       @mpv.signal_connect("file_changed") { |w, file|
         @playing = file
         @mpv.send("show_text ${media-title} 1500") if window.state.fullscreen?
@@ -94,6 +103,11 @@ module Ampv
                                @config["playlist_width"],
                                @config["playlist_height"],
                                @config["playlist_visible"])
+
+      Gtk::Drag.dest_set(@playlist, Gtk::Drag::DEST_DEFAULT_ALL,
+                         [ [ "text/uri-list", 0, 0 ] ],
+                         Gdk::DragContext::ACTION_LINK)
+
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
         handle_drop_event(sd.data, dc, time, true, false)
@@ -308,11 +322,9 @@ module Ampv
       if window.state.fullscreen?
         @progress_bar.show unless @progress_bar_user_hidden
         unfullscreen
-        window.set_cursor(LEFT_PTR)
       else
         @progress_bar.hide unless @config["fullscreen_progressbar"]
         fullscreen
-        window.set_cursor(BLANK_CURSOR)
       end
     end
 
@@ -355,6 +367,13 @@ module Ampv
         do_not_play = true
       } if dialog.run == Gtk::Dialog::RESPONSE_ACCEPT
       dialog.destroy
+    end
+
+    def print_version
+      puts("#{PACKAGE} - v#{VERSION}\n" +
+           "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL} (#{RUBY_RELEASE_DATE} revision #{RUBY_REVISION}) [#{RUBY_PLATFORM}]\n\n" +
+          `#{MpvWidget::PATH} --version`)
+      exit
     end
 
     def quit(watch_later=false)

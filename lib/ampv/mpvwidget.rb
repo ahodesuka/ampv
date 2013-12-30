@@ -1,13 +1,17 @@
 require "fifo"
 
 module Ampv
-  class MPvWidget < Gtk::EventBox
+  class MpvWidget < Gtk::EventBox
 
     type_register
     signal_new("file_changed", GLib::Signal::RUN_FIRST, nil, nil, String)
     signal_new("length_changed", GLib::Signal::RUN_FIRST, nil, nil, Integer)
     signal_new("time_pos_changed", GLib::Signal::RUN_FIRST, nil, nil, Float)
     signal_new("stopped", GLib::Signal::RUN_FIRST, nil, nil)
+
+    PATH = "/usr/bin/mpv"
+
+    attr_reader :is_paused
 
     def initialize(args, scrobbler)
       if args.include?("--debug")
@@ -39,7 +43,7 @@ module Ampv
           --input-file=#{@mpv_fifo} \
           --no-mouse-movements \
           --cursor-autohide=no \
-          --msglevel=all=info:global=info \
+          --msglevel=all=info \
           --wid=#{@socket.id} #{@mpv_options}"
         @thread = Thread.new { slave_reader(cmd) }
       end
