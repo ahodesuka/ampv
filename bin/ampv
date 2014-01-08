@@ -1,6 +1,9 @@
 #!/usr/bin/env ruby
 
-$:.unshift File.expand_path("../lib", File.dirname(__FILE__))
+unless $:.include?(lib = File.expand_path("../../lib", __FILE__))
+  $:.unshift(lib)
+end
+
 require "ampv"
 
 Ampv::MainWindow.new

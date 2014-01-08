@@ -6,7 +6,7 @@ A minimal GTK2 frontend for [mpv](https://github.com/mpv-player/mpv) written in 
 
     $ gem install ampv
 
-Ensure `~/.gem/ruby/**/bin` is in your `$PATH`.
+Ensure you have `$(ruby -rubygems -e "puts Gem.user_dir")/bin` added to your `$PATH`.
 
 ## Usage
 
@@ -17,5 +17,6 @@ or
     $ ampv "videofile"
 
 ampv input configuration is loaded from `~/.mpv/input.conf` - and ignores all default mpv bindings.<br>
-An example input.conf is included in this repository.  mpv will retain settings in `~/.mpv/config` except for the `autofit*` and `geometry` settings
+An example input.conf is included in this repository.  This example config is used if there is none in the previously stated location.
+mpv will retain settings in `~/.mpv/config` except for the `autofit*` and `geometry` settings.
 

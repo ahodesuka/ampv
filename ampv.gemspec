@@ -1,5 +1,6 @@
-lib = File.expand_path('../lib', __FILE__)
-$:.unshift(lib) unless $:.include?(lib)
+unless $:.include?(lib = File.expand_path("../lib", __FILE__))
+  $:.unshift(lib)
+end
 
 require "date"
 require "ampv/version"
@@ -19,7 +20,7 @@ Gem::Specification.new { |s|
   s.default_executable    = Ampv::PACKAGE
   s.required_ruby_version = ">=1.9.3"
   s.add_runtime_dependency("gtk2")
+  s.add_runtime_dependency("json")
   s.add_runtime_dependency("ruby-fifo")
-  s.requirements << "gtk2"
-  s.requirements << "mpv"
+  s.requirements << "mpv v0.3.x"
 }
