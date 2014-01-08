@@ -18,7 +18,7 @@ module Ampv
       end
     }
 
-    attr_reader :is_paused
+    attr_reader :is_paused, :is_stopped
 
     def initialize(args)
       if args.include?("--debug")
@@ -35,7 +35,10 @@ module Ampv
 
       @socket = Gtk::Socket.new
       @socket.modify_bg(Gtk::STATE_NORMAL, Gdk::Color.parse("#000"))
-      @socket.signal_connect("plug_removed") { signal_emit("stopped"); true }
+      @socket.signal_connect("plug_removed") {
+        signal_emit("stopped")
+        @is_stopped = true
+      }
 
       add(@socket)
     end
@@ -56,13 +59,13 @@ module Ampv
 
     def stop
       send("stop")
-      @is_paused = true
+      @is_stopped = @is_paused = true
     end
 
     def quit(watch_later)
       send("quit" + (watch_later ? "_watch_later" : ""))
-      @thread.kill if @thread
       @prog_thread.kill if @prog_thread
+      @thread.join
       @fifo.close
     end
 
@@ -89,6 +92,7 @@ module Ampv
               send("get_property length")
               send("get_property time-pos")
               send("get_property pause")
+              @is_stopped = false
             elsif line.start_with?("ANS_length=")
               signal_emit("length_changed", (@length = line.rpartition("=")[-1].to_i))
             elsif line.start_with?("ANS_pause=")

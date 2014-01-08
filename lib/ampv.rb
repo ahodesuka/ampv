@@ -131,7 +131,11 @@ module Ampv
         end
       elsif Config["playlist"].length > 0
         Config["playlist"].each { |x| @playlist.add_file(x["file"], x["length"], x["watched"]) }
-        @playlist.set_selected(Config["playlist_selected"])
+        if Config["resume_playback"]
+          @mpv.load_file(Config["playlist_selected"])
+        else
+          @playlist.set_selected(Config["playlist_selected"])
+        end
       end
 
       Gtk.main
@@ -299,6 +303,7 @@ module Ampv
       Config["playlist_visible"]     = @playlist.visible?
       Config["playlist_selected"]    = @playing
       Config["playlist"]             = @playlist.get_entries.to_json
+      Config["resume_playback"]      = !@mpv.is_stopped && (watch_later || Config["always_save_position"])
       Config["progress_bar_visible"] = @progress_bar.visible?
       Config.save
 
