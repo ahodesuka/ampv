@@ -7,6 +7,7 @@ module Ampv
     signal_new("open_file_chooser", GLib::Signal::RUN_FIRST, nil, nil)
 
     WATCHED_PIXBUF = Gtk::Invisible.new.render_icon(Gtk::Stock::OK, Gtk::IconSize::MENU)
+    PLAYING_PIXBUF = Gtk::Invisible.new.render_icon(Gtk::Stock::MEDIA_PLAY, Gtk::IconSize::MENU)
 
     def initialize
       buttons = {
@@ -114,6 +115,7 @@ module Ampv
 
     def on_playing_watched
       @playing_iter[2] = WATCHED_PIXBUF
+      @current_is_watched = true
     end
 
     def include?(file)
@@ -148,6 +150,12 @@ module Ampv
       entries
     end
 
+    def get_files
+      files = [ ]
+      @model.each { |m, p, iter| files << iter[0] }
+      files
+    end
+
     def clear(quiet = false)
       @model.clear
       signal_emit("playing_removed") unless quiet or @playing_iter.nil?
@@ -158,8 +166,14 @@ module Ampv
       i = 0
       @model.each { |m, p, iter|
         if iter[0] == @playing
+          # reset icon for previous playing entry
+          if @playing_iter
+            @playing_iter[2] = @current_is_watched ? WATCHED_PIXBUF : nil
+          end
           @treeview.set_cursor(Gtk::TreePath.new(i), nil, false)
           @playing_iter = iter
+          @current_is_watched = @playing_iter[2] == WATCHED_PIXBUF
+          @playing_iter[2] = PLAYING_PIXBUF
           break
         end
         i += 1

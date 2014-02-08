@@ -57,7 +57,9 @@ module Ampv
       signal_connect("button_press_event") { |w, e| handle_mouse_event(e) }
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
       signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
-        handle_drop_event(sd.uris, false, true)
+        files = sd.uris.map { |f| URI.decode(f).sub(/^file:\/\/[^\/]*/, "") }
+        @playlist.clear(true) unless @playlist.get_files & files == files
+        load_files(files)
         Gtk::Drag.finish(dc, true, false, time)
       }
       signal_connect("motion_notify_event") { mouse_cursor_timeout }
@@ -95,7 +97,7 @@ module Ampv
           next_file = @playlist.get_next
           @really_stop ||= next_file.nil?
           if !@really_stop
-            load_file(next_file, false)
+            @mpv.load_file(next_file)
           elsif window.state.fullscreen?
             toggle_fullscreen
           end
@@ -105,10 +107,10 @@ module Ampv
 
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
-        handle_drop_event(sd.uris, true, false)
+        sd.uris.each { |f| @playlist.add_file(URI.decode(f).sub(/^file:\/\/[^\/]*/, "")) }
         Gtk::Drag.finish(dc, true, false, time)
       }
-      @playlist.signal_connect("play_entry") { |w, file| load_file(file, false, false, false, true) }
+      @playlist.signal_connect("play_entry") { |w, file| @mpv.load_file(file, true) }
       @playlist.signal_connect("playing_removed") { @mpv.stop; @really_stop = true }
 
       Gtk::Drag.dest_set(@playlist, Gtk::Drag::DEST_DEFAULT_ALL,
@@ -125,9 +127,9 @@ module Ampv
 
       if !files.empty?
         if files.length > 1
-          files.each_with_index { |x, i| load_file(x, true, i != 0, false) }
+          load_files(files)
         else
-          load_file(files[0])
+          load_file(files[0], false)
         end
       elsif Config["playlist"].length > 0
         Config["playlist"].each { |x| @playlist.add_file(x["file"], x["length"], x["watched"]) }
@@ -142,19 +144,32 @@ module Ampv
     end
 
   private
-    def load_file(file, add_to_playlist = true, do_not_play = false, auto_add = true, force_play = false)
-      file = File.expand_path(file) if file[0] == "~"
-      return unless (File.directory?(file) or valid_video_file?(file))
-
-      if add_to_playlist
-        if @playlist.count == 0 and auto_add and file !~ /^https?:\/\//
-          file = create_playlist(file)
-        else
-          @playlist.add_file(file)
-        end
+    def load_file(file, auto_add = true, play = true)
+      if file =~ /^#{URI::regexp}$/
+        uri = true
+      else
+        file = File.expand_path(file)
       end
 
-      @mpv.load_file(file, force_play) unless do_not_play
+      return unless File.directory?(file) or valid_video_file?(file) or uri
+
+      if @playlist.count == 0 and auto_add
+        file = create_playlist(file)
+      elsif !@playlist.include?(file)
+        @playlist.add_file(file)
+      end
+
+      @mpv.load_file(file) if play
+    end
+
+    def load_files(files)
+      if files.length == 1
+        load_file(files[0])
+      else
+        files.each_with_index { |x, i|
+          load_file(x, false, i == 0)
+        }
+      end
     end
 
     def create_playlist(file)
@@ -183,11 +198,6 @@ module Ampv
       end
     end
 
-    def handle_drop_event(files, do_not_play, replace)
-      @playlist.clear if replace
-      files.each { |x| load_file(URI.decode(x).sub(/^file:\/\/[^\/]*/, ""), true, do_not_play) }
-    end
-
     def mouse_cursor_timeout
       window.set_cursor(LEFT_PTR)
       GLib::Source.remove(@cursor_timeout) if @cursor_timeout
@@ -211,9 +221,11 @@ module Ampv
       when /add chapter/
         seek(cmd)
       when "playlist_next"
-        load_file(@playlist.get_next, false)
+        file = @playlist.get_next
+        @mpv.load_file(file) if file
       when "playlist_prev"
-        load_file(@playlist.get_prev, false)
+        file = @playlist.get_prev
+        @mpv.load_file(file) if file
       when "open_file_chooser"
         open_file_chooser
       when "cycle progress_bar"
@@ -256,9 +268,8 @@ module Ampv
     end
 
     def valid_video_file?(x)
-      return (x and File.exists?(x) and !File.directory?(x) and VIDEO_EXTS.include?(File.extname(x).downcase))
+      return (x and File.exists?(x) and File.file?(x) and VIDEO_EXTS.include?(File.extname(x).downcase))
     end
-
 
     def open_file_chooser
       dialog = Gtk::FileChooserDialog.new("Open File - #{PACKAGE}",
@@ -277,10 +288,7 @@ module Ampv
       filterAll.add_pattern("*.*")
       dialog.add_filter(filterAll)
 
-      dialog.filenames.each { |x|
-        do_not_play = @playlist.count > 0
-        load_file(x, true, do_not_play)
-      } if dialog.run == Gtk::Dialog::RESPONSE_ACCEPT
+      load_files(dialog.filenames) if dialog.run == Gtk::Dialog::RESPONSE_ACCEPT
       dialog.destroy
     end
 
