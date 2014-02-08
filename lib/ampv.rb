@@ -98,8 +98,9 @@ module Ampv
           @really_stop ||= next_file.nil?
           if !@really_stop
             @mpv.load_file(next_file)
-          elsif window.state.fullscreen?
-            toggle_fullscreen
+          else
+            @playlist.playing_stopped
+            toggle_fullscreen if window.state.fullscreen?
           end
         end
         @really_stop = @ignore_stop = false
@@ -126,11 +127,7 @@ module Ampv
       show_all
 
       if !files.empty?
-        if files.length > 1
-          load_files(files)
-        else
-          load_file(files[0], false)
-        end
+        load_files(files)
       elsif Config["playlist"].length > 0
         Config["playlist"].each { |x| @playlist.add_file(x["file"], x["length"], x["watched"]) }
         if Config["resume_playback"]

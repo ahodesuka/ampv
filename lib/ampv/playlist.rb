@@ -144,7 +144,7 @@ module Ampv
         entries << {
           "file"    => iter[0],
           "length"  => iter[1] ? iter[1] : "",
-          "watched" => !iter[2].nil?
+          "watched" => iter[2] == WATCHED_PIXBUF || (iter == @playing_iter && @current_is_watched)
         }
       }
       entries
@@ -159,6 +159,7 @@ module Ampv
     def clear(quiet = false)
       @model.clear
       signal_emit("playing_removed") unless quiet or @playing_iter.nil?
+      @playing_iter = nil
     end
 
     def set_selected(file)
@@ -178,6 +179,10 @@ module Ampv
         end
         i += 1
       }
+    end
+
+    def playing_stopped
+      @playing_iter[2] = nil if @playing_iter and @playing_iter[2] == PLAYING_PIXBUF
     end
 
     def update_length(length)
@@ -210,7 +215,10 @@ module Ampv
         to_remove << @model.get_iter(path)
       }
       to_remove.each { |iter|
-        signal_emit("playing_removed") if iter == @playing_iter
+        if iter == @playing_iter
+          @playing_iter = nil
+          signal_emit("playing_removed")
+        end
         @model.remove(iter)
       }
     end
