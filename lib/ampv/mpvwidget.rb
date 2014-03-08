@@ -31,16 +31,12 @@ module Ampv
       @is_paused   = true
 
       super()
-      signal_connect("realize") { start }
 
-      @socket = Gtk::Socket.new
-      @socket.modify_bg(Gtk::STATE_NORMAL, Gdk::Color.parse("#000"))
-      @socket.signal_connect("plug_removed") {
-        signal_emit("stopped")
-        @is_stopped = true
-      }
+      @widget = Gtk::DrawingArea.new
+      @widget.modify_bg(Gtk::STATE_NORMAL, Gdk::Color.parse("#000"))
+      @widget.signal_connect("realize") { start }
 
-      add(@socket)
+      add(@widget)
     end
 
     def send(cmd)
@@ -81,13 +77,13 @@ module Ampv
         --cursor-autohide=no \
         --no-mouse-movements \
         --msglevel=all=info \
-        --wid=#{@socket.id} #{@mpv_options}"
+        --wid=#{@widget.window.xid} #{@mpv_options}"
 
       @thread = Thread.start {
         IO.popen(cmd) { |io|
           io.each { |line|
             line.chomp!
-            if line.include?("Playing: ")
+            if line.start_with?("Playing: ")
               signal_emit("file_changed", (@playing = line.partition("Playing: ")[-1]))
               send("get_property length")
               send("get_property time-pos")
@@ -102,6 +98,9 @@ module Ampv
               play_pause if @force_play and @is_paused
             elsif line.start_with?("ANS_time-pos=")
               signal_emit("time_pos_changed", line.rpartition("=")[-1].to_f)
+            elsif line == "Creating non-video VO window."
+              signal_emit("stopped")
+              @is_stopped = true
             end
 
             puts(line) if @debug and !line.start_with?("ANS_")
@@ -114,7 +113,7 @@ module Ampv
       scrobbled = false
       watched = 0
       loop {
-        send("get_property time-pos") unless @is_paused
+        send("get_property time-pos")
         unless scrobbled or watched < @length * 0.5
           system("#{Config["scrobbler"]} \"#{@playing}\"") if Config["scrobbler"]
           signal_emit("playing_watched")

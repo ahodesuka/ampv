@@ -19,9 +19,6 @@ module Ampv
       Gdk::EventScroll::RIGHT => 7
     }
 
-    LEFT_PTR     = Gdk::Cursor.new(Gdk::Cursor::LEFT_PTR)
-    BLANK_CURSOR = Gdk::Cursor.new(Gdk::Cursor::BLANK_CURSOR)
-
     def initialize
       unless defined?(MpvWidget::PATH)
         dlg = Gtk::MessageDialog.new(nil,
@@ -60,6 +57,7 @@ module Ampv
         files = sd.uris.map { |f| URI.decode(f).sub(/^file:\/\/[^\/]*/, "") }
         @playlist.clear(true) unless @playlist.get_files & files == files
         load_files(files)
+        present
         Gtk::Drag.finish(dc, true, false, time)
       }
       signal_connect("motion_notify_event") { mouse_cursor_timeout }
@@ -68,22 +66,10 @@ module Ampv
       @mpv          = MpvWidget.new(args)
       @progress_bar = ProgressBarWidget.new
       @playlist     = Playlist.new
-      @ignore_stop  = false
 
       @mpv.signal_connect("file_changed") { |w, file|
         @playing = URI.decode(file).sub(/^file:\/\/[^\/]*/, "")
-        # hacky work around when mpv catches drag and drop events.
-        unless @playlist.include?(@playing)
-          @playlist.clear(true)
-          if (file = create_playlist(@playing)) != @playing and File.directory?(@playing)
-            @playing = file
-            GLib::Idle.add { @mpv.load_file(@playing); false }
-            # mpv will fail to play the directory and then stop
-            # ignore the next stop event so the playlist does not advance
-            @ignore_stop = true
-          end
-        end
-        @mpv.send("show_text ${media-title} 1500") if window.state.fullscreen? and !@ignore_stop
+        @mpv.send("show_text ${media-title} 1500") if window.state.fullscreen?
         @playlist.set_selected(@playing)
         set_title(File.basename(@playing))
       }
@@ -93,22 +79,21 @@ module Ampv
       @mpv.signal_connect("stopped") {
         @progress_bar.value = 0
         set_title(PACKAGE)
-        unless @ignore_stop
-          next_file = @playlist.get_next
-          @really_stop ||= next_file.nil?
-          if !@really_stop
-            @mpv.load_file(next_file)
-          else
-            @playlist.playing_stopped
-            toggle_fullscreen if window.state.fullscreen?
-          end
+        next_file = @playlist.get_next
+        @really_stop ||= next_file.nil?
+        if !@really_stop
+          @mpv.load_file(next_file)
+        else
+          @playlist.playing_stopped
+          toggle_fullscreen if window.state.fullscreen?
         end
-        @really_stop = @ignore_stop = false
+        @really_stop = false
       }
 
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
         sd.uris.each { |f| @playlist.add_file(URI.decode(f).sub(/^file:\/\/[^\/]*/, "")) }
+        present
         Gtk::Drag.finish(dc, true, false, time)
       }
       @playlist.signal_connect("play_entry") { |w, file| @mpv.load_file(file, true) }
@@ -178,10 +163,12 @@ module Ampv
     end
 
     def handle_mouse_event(e)
+      if e.event_type != Gdk::Event::MOTION_NOTIFY
+        button = e.event_type == Gdk::Event::SCROLL ? WHEEL_BUTTONS[e.direction] : e.button
+        return if Config["mouse_bindings"][e.event_type].nil?
+        process_cmd(Config["mouse_bindings"][e.event_type][button])
+      end
       mouse_cursor_timeout
-      button = e.event_type == Gdk::Event::SCROLL ? WHEEL_BUTTONS[e.direction] : e.button
-      return if Config["mouse_bindings"][e.event_type].nil?
-      process_cmd(Config["mouse_bindings"][e.event_type][button])
     end
 
     def handle_keyboard_event(e)
@@ -196,11 +183,12 @@ module Ampv
     end
 
     def mouse_cursor_timeout
-      window.set_cursor(LEFT_PTR)
+      window.set_cursor(nil)
       GLib::Source.remove(@cursor_timeout) if @cursor_timeout
       @cursor_timeout = GLib::Timeout.add(1000) {
-        window.set_cursor(BLANK_CURSOR)
-      } unless @mpv.is_paused
+        window.set_cursor(Gdk::Cursor.new(Gdk::Cursor::BLANK_CURSOR)) unless @mpv.is_paused
+        false
+      }
     end
 
     def process_cmd(cmd)

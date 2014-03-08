@@ -42,11 +42,11 @@ module Ampv
       vbox.border_width = 10
       sw.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC)
 
-      @treeview.enable_search  = false
-      @treeview.rubber_banding = true
-      @treeview.reorderable = true
-      @treeview.selection.mode = Gtk::SELECTION_MULTIPLE
-      @treeview.tooltip_column = 0
+      @treeview.set_enable_search (false)
+      @treeview.set_rubber_banding(true)
+      @treeview.set_reorderable(true)
+      @treeview.set_tooltip_column(0)
+      @treeview.selection.set_mode(Gtk::SELECTION_MULTIPLE)
 
       @treeview.signal_connect("row_activated") { |w, p, c|
         signal_emit("play_entry", @model.get_iter(p)[0])
@@ -55,7 +55,11 @@ module Ampv
         remove_selected if e.keyval == Gdk::Keyval::GDK_Delete
       }
       @treeview.signal_connect("button_press_event") { |w, e|
-        @menu.popup(nil, nil, e.button, e.time) if e.event_type == Gdk::Event::BUTTON_PRESS and e.button == 3
+        if e.event_type == Gdk::Event::BUTTON_PRESS and e.button == 3
+          path = @treeview.get_path(e.x, e.y)[0]
+          @treeview.set_cursor(path, nil, false) if path
+          @menu.popup(nil, nil, e.button, e.time)
+        end
       }
 
       ["Name", "Length"].each_with_index { |x, i|
