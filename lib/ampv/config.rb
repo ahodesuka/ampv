@@ -1,10 +1,10 @@
 module Ampv
   class Config
 
-    @@config_file  = "#{(ENV["XDG_CONFIG_HOME"] || "#{Dir.home}/.config")}/ampv.conf"
-    @@input_config = File.exists?("#{Dir.home}/.mpv/input.conf") ?
+    CONFIG_FILE  = "#{(ENV["XDG_CONFIG_HOME"] || "#{Dir.home}/.config")}/ampv.conf"
+    INPUT_CONFIG = File.exists?("#{Dir.home}/.mpv/input.conf") ?
                       "#{Dir.home}/.mpv/input.conf" : File.expand_path("../../../input.conf", __FILE__)
-    @@key_names    = {
+    KEY_NAMES    = {
       "esc"         => "Escape",
       "space"       => "space",
       "right"       => "Right",
@@ -18,8 +18,7 @@ module Ampv
       "ins"         => "Insert",
       "del"         => "Delete",
     }
-    @@config       = { }
-    @@defaults     = {
+    DEFAULTS     = {
         "width"                  => Gdk::Screen.default.width > 1280 ? 1280 : 853,
         "height"                 => Gdk::Screen.default.width > 1280 ? 726  : 486,
         "x"                      => -1,
@@ -42,20 +41,21 @@ module Ampv
         "key_bindings"           => [ ],
         "mouse_bindings"         => [ ]
     }
+    @@config     = { }
 
     def self.load
-      if File.exists?(@@config_file)
-        File.readlines(@@config_file).each { |line|
+      if File.exists?(CONFIG_FILE)
+        File.readlines(CONFIG_FILE).each { |line|
           key, _, val = line.partition("=")
           key.strip!
           val.strip!
-          next unless @@defaults.has_key?(key) and key[0] != "#"
+          next unless DEFAULTS.has_key?(key) and key[0] != "#"
 
-          if @@defaults[key].is_a?(Integer)
+          if DEFAULTS[key].is_a?(Integer)
             val = val.to_i
-          elsif @@defaults[key].is_a?(TrueClass) or  @@defaults[key].is_a?(FalseClass)
+          elsif DEFAULTS[key].is_a?(TrueClass) or  DEFAULTS[key].is_a?(FalseClass)
             val = val == "true"
-          elsif @@defaults[key].is_a?(Gdk::Color)
+          elsif DEFAULTS[key].is_a?(Gdk::Color)
             begin
               val = Gdk::Color.parse(val)
             rescue
@@ -78,8 +78,8 @@ module Ampv
       # load input config
       self["mouse_bindings"] = [ ]
       self["key_bindings"]   = [ ]
-      if File.exists?(@@input_config)
-        File.readlines(@@input_config).each { |line|
+      if File.exists?(INPUT_CONFIG)
+        File.readlines(INPUT_CONFIG).each { |line|
           line.strip!
           if line.start_with?("MOUSE_BTN")
             # 4 = up, 5 = down, 6 = left, 7 = right
@@ -91,7 +91,7 @@ module Ampv
             self["mouse_bindings"][type][button] = cmd
           elsif !line.empty?
             key, cmd = line.match(/^([^\s]+)\s+(.+)$/).captures
-            if name = @@key_names[key.downcase]
+            if name = KEY_NAMES[key.downcase]
               keyval = Gdk::Keyval.from_name(name)
             else
               keyval = Gdk::Keyval.from_name(key)
@@ -104,7 +104,7 @@ module Ampv
     end
 
     def self.[](key)
-      @@config[key].nil? ? @@defaults[key] : @@config[key]
+      @@config[key].nil? ? DEFAULTS[key] : @@config[key]
     end
 
     def self.[]=(key, value)
@@ -112,7 +112,7 @@ module Ampv
     end
 
     def self.save
-      File.open(@@config_file, "w") { |file|
+      File.open(CONFIG_FILE, "w") { |file|
         @@config.each { |k, v| file.puts("#{k}=#{v}") unless k == "key_bindings" or k == "mouse_bindings" }
       }
     end

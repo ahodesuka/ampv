@@ -42,7 +42,7 @@ module Ampv
       vbox.border_width = 10
       sw.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC)
 
-      @treeview.set_enable_search (false)
+      @treeview.set_enable_search(false)
       @treeview.set_rubber_banding(true)
       @treeview.set_reorderable(true)
       @treeview.set_tooltip_column(0)

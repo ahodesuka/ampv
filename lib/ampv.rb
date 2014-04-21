@@ -163,12 +163,10 @@ module Ampv
     end
 
     def handle_mouse_event(e)
-      if e.event_type != Gdk::Event::MOTION_NOTIFY
-        button = e.event_type == Gdk::Event::SCROLL ? WHEEL_BUTTONS[e.direction] : e.button
-        return if Config["mouse_bindings"][e.event_type].nil?
-        process_cmd(Config["mouse_bindings"][e.event_type][button])
-      end
-      mouse_cursor_timeout
+      button = e.event_type == Gdk::Event::SCROLL ? WHEEL_BUTTONS[e.direction] : e.button
+      return if Config["mouse_bindings"][e.event_type].nil?
+      process_cmd(Config["mouse_bindings"][e.event_type][button])
+      mouse_cursor_timeout(true)
     end
 
     def handle_keyboard_event(e)
@@ -182,11 +180,14 @@ module Ampv
       end
     end
 
-    def mouse_cursor_timeout
-      window.set_cursor(nil)
+    def mouse_cursor_timeout(mevent = false)
       GLib::Source.remove(@cursor_timeout) if @cursor_timeout
+      window.set_cursor(nil)
       @cursor_timeout = GLib::Timeout.add(1000) {
         window.set_cursor(Gdk::Cursor.new(Gdk::Cursor::BLANK_CURSOR)) unless @mpv.is_paused
+        # hacky workaround when called after a mouse event
+        # without this the cursor is still shown when it should not be.
+        Gdk::Display.default.warp_pointer(*Gdk::Display.default.pointer[0..2]) if mevent
         false
       }
     end
