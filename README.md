@@ -10,6 +10,8 @@ A minimal GTK2 frontend for [mpv](https://github.com/mpv-player/mpv) written in 
 
 Ensure you have `$(ruby -rubygems -e "puts Gem.user_dir")/bin` added to your `$PATH`.
 
+Or if you are using Gentoo/Funtoo you can use [this ebuild](https://gist.github.com/ahodesuka/11176807).
+
 ## Screenshots
 ![Player Window](https://goput.it/ekdd.png)
 ![Playlist Window](https://goput.it/9las.png)
