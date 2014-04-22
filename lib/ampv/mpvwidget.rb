@@ -7,6 +7,7 @@ module Ampv
     type_register
     signal_new("file_changed", GLib::Signal::RUN_FIRST, nil, nil, String)
     signal_new("length_changed", GLib::Signal::RUN_FIRST, nil, nil, Integer)
+    signal_new("title_changed", GLib::Signal::RUN_FIRST, nil, nil, String)
     signal_new("playing_watched", GLib::Signal::RUN_FIRST, nil, nil)
     signal_new("time_pos_changed", GLib::Signal::RUN_FIRST, nil, nil, Float)
     signal_new("stopped", GLib::Signal::RUN_FIRST, nil, nil)
@@ -89,6 +90,10 @@ module Ampv
               send("get_property time-pos")
               send("get_property pause")
               @is_stopped = false
+            elsif line.start_with?("Cache size set")
+              send("get_property media-title")
+            elsif line.start_with?("ANS_media-title=")
+              signal_emit("title_changed", line.rpartition("=")[-1])
             elsif line.start_with?("ANS_length=")
               signal_emit("length_changed", (@length = line.rpartition("=")[-1].to_i))
             elsif line.start_with?("ANS_pause=")
@@ -126,6 +131,7 @@ module Ampv
 
     def signal_do_file_changed(file) end
     def signal_do_length_changed(len) end
+    def signal_do_title_changed(title) end
     def signal_do_playing_watched; end
     def signal_do_time_pos_changed(pos) end
     def signal_do_stopped

@@ -75,6 +75,10 @@ module Ampv
       }
       @mpv.signal_connect("playing_watched") { @playlist.on_playing_watched }
       @mpv.signal_connect("length_changed") { |w, len| @playlist.update_length(@length = len) }
+      @mpv.signal_connect("title_changed") { |w, t|
+        @playlist.update_title(t)
+        set_title(t)
+      }
       @mpv.signal_connect("time_pos_changed") { |w, pos| @progress_bar.value = pos / @length.to_f }
       @mpv.signal_connect("stopped") {
         @progress_bar.value = 0
@@ -122,6 +126,7 @@ module Ampv
         end
       end
 
+      mouse_cursor_timeout
       Gtk.main
     end
 
@@ -135,7 +140,7 @@ module Ampv
 
       return unless File.directory?(file) or valid_video_file?(file) or uri
 
-      if @playlist.count == 0 and auto_add
+      if @playlist.count == 0 and auto_add and !uri
         file = create_playlist(file)
       elsif !@playlist.include?(file)
         @playlist.add_file(file)
@@ -184,7 +189,7 @@ module Ampv
       GLib::Source.remove(@cursor_timeout) if @cursor_timeout
       window.set_cursor(nil)
       @cursor_timeout = GLib::Timeout.add(1000) {
-        window.set_cursor(Gdk::Cursor.new(Gdk::Cursor::BLANK_CURSOR)) unless @mpv.is_paused
+        window.set_cursor(Gdk::Cursor.new(Gdk::Cursor::BLANK_CURSOR))
         # hacky workaround when called after a mouse event
         # without this the cursor is still shown when it should not be.
         Gdk::Display.default.warp_pointer(*Gdk::Display.default.pointer[0..2]) if mevent
@@ -240,7 +245,6 @@ module Ampv
         @progress_bar.hide unless Config["fullscreen_progressbar"]
         fullscreen
       end
-      mouse_cursor_timeout
     end
 
     def toggle_progress_bar

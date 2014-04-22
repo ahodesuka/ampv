@@ -194,6 +194,11 @@ module Ampv
       @playing_iter[1] = Time.at(length).utc.strftime("%H:%M:%S") if @playing_iter
     end
 
+    def update_title(title)
+      return unless title
+      @playing_iter[0] = title
+    end
+
   private
     def move_selected_up
       @treeview.selection.selected_rows.each { |path|
