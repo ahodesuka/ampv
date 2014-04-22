@@ -32,6 +32,7 @@ module Ampv
         hide_on_delete if e.keyval == Gdk::Keyval::GDK_Escape
       }
 
+      @titles   = Hash.new
       vbox      = Gtk::VBox.new(false, 10)
       sw        = Gtk::ScrolledWindow.new
       @model    = Gtk::ListStore.new(String, String, Gdk::Pixbuf)
@@ -69,7 +70,11 @@ module Ampv
           renderer.ellipsize = Pango::ELLIPSIZE_MIDDLE
           column.expand = true
           column.set_cell_data_func(renderer) { |t, c, m, j|
-            c.text = File.basename(m.get_value(j, 0)) unless m.get_value(j, 0).nil?
+            if @titles[j[0]]
+              c.text = @titles[j[0]]
+            else
+              c.text = File.basename(j[0])
+            end
           }
         end
 
@@ -161,6 +166,7 @@ module Ampv
     end
 
     def clear(quiet = false)
+      @titles.clear
       @model.clear
       signal_emit("playing_removed") unless quiet or @playing_iter.nil?
       @playing_iter = nil
@@ -196,7 +202,7 @@ module Ampv
 
     def update_title(title)
       return unless title
-      @playing_iter[0] = title
+      @titles[@playing_iter[0]] = title
     end
 
   private
@@ -228,6 +234,7 @@ module Ampv
           @playing_iter = nil
           signal_emit("playing_removed")
         end
+        @titles.delete(iter[0])
         @model.remove(iter)
       }
     end

@@ -1,4 +1,3 @@
-require "fifo"
 require "tmpdir"
 
 module Ampv
@@ -41,7 +40,8 @@ module Ampv
     end
 
     def send(cmd)
-      @fifo.puts(cmd) if @fifo
+      @fifo.puts(cmd)
+      @fifo.flush
     end
 
     def load_file(file, force_play = false)
@@ -69,7 +69,8 @@ module Ampv
   private
     def start
       return if @thread and @thread.alive?
-      @fifo = Fifo.new(@mpv_fifo, :w, :nowait)
+      system("mkfifo \"#{@mpv_fifo}\"")
+      @fifo = File.open(@mpv_fifo, "w+")
       ObjectSpace.define_finalizer(self, proc { File.delete(@mpv_fifo) })
 
       cmd = "#{PATH} \
@@ -86,12 +87,11 @@ module Ampv
             line.chomp!
             if line.start_with?("Playing: ")
               signal_emit("file_changed", (@playing = line.partition("Playing: ")[-1]))
+              send("get_property media-title")
               send("get_property length")
               send("get_property time-pos")
               send("get_property pause")
               @is_stopped = false
-            elsif line.start_with?("Cache size set")
-              send("get_property media-title")
             elsif line.start_with?("ANS_media-title=")
               signal_emit("title_changed", line.rpartition("=")[-1])
             elsif line.start_with?("ANS_length=")
