@@ -14,7 +14,7 @@ Or if you are using Gentoo/Funtoo you can use [this ebuild](https://gist.github.
 
 ## Screenshots
 ![Player Window](https://goput.it/ekdd.png)
-![Playlist Window](https://goput.it/9las.png)
+![Playlist Window](https://goput.it/bbv6.png)
 
 ## Usage
 
