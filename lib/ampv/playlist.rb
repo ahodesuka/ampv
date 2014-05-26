@@ -57,7 +57,7 @@ module Ampv
       }
       @treeview.signal_connect("button_press_event") { |w, e|
         if e.event_type == Gdk::Event::BUTTON_PRESS and e.button == 3
-          path = @treeview.get_path(e.x, e.y)[0]
+          path, = @treeview.get_path(e.x, e.y)
           @treeview.set_cursor(path, nil, false) if path
           @menu.popup(nil, nil, e.button, e.time)
         end
@@ -101,10 +101,10 @@ module Ampv
       sw.add(@treeview)
       vbox.pack_start(sw)
       vbox.pack_start(hbox, false)
-      add(vbox)
+      add(vbox.show_all)
       @menu.show_all
 
-      show_all if Config["playlist_visible"]
+      show if Config["playlist_visible"]
     end
 
     def count

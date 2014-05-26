@@ -113,7 +113,7 @@ module Ampv
 
     def self.save
       File.open(CONFIG_FILE, "w") { |file|
-        @@config.each { |k, v| file.puts("#{k}=#{v}") unless k == "key_bindings" or k == "mouse_bindings" }
+        @@config.each { |k, v| file.puts("#{k}=#{v}") unless [ "key_bindings", "mouse_bindings" ].include?(k) }
       }
     end
   end
