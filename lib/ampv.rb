@@ -20,18 +20,6 @@ module Ampv
     }
 
     def initialize
-      unless defined?(MpvWidget::PATH)
-        dlg = Gtk::MessageDialog.new(nil,
-                                     Gtk::Dialog::DESTROY_WITH_PARENT,
-                                     Gtk::MessageDialog::ERROR,
-                                     Gtk::MessageDialog::BUTTONS_CLOSE,
-                                     "Unable to find mpv executable")
-        dlg.set_secondary_text("Please ensure you have mpv installed in your PATH.")
-        dlg.run
-        dlg.destroy
-        exit
-      end
-
       args  = ARGV.reject { |x| x[0] != "-" }
       files = ARGV - args
 
@@ -63,36 +51,56 @@ module Ampv
       signal_connect("motion_notify_event") { mouse_cursor_timeout }
 
       vbox          = Gtk::VBox.new
-      @mpv          = MpvWidget.new(args)
+      @mpv          = MpvWidget.new
       @progress_bar = ProgressBarWidget.new
       @playlist     = Playlist.new
 
-      @mpv.signal_connect("file_changed") { |w, file|
-        @playing = URI.decode(file).sub(/^file:\/\/[^\/]*/, "")
-        @mpv.send("show_text ${media-title} 1500") if window.state.fullscreen?
+      @mpv.handle.register_event(Mpv::Event::FILE_LOADED) {
+        @tpropid = false
+        @stopped = false
+        @playing = @mpv.handle.get_property("path")
+        @length  = @mpv.handle.get_property("length")
+        title    = @mpv.handle.get_property("media-title")
+
+        @mpv.handle.command("show_text ${media-title} 1500") if window.state.fullscreen?
         @playlist.set_selected(@playing)
-        set_title(File.basename(@playing))
+        @playlist.update_title(title)
+        set_title(title)
+        @prog_thread.kill if @prog_thread
+
+        if @length
+          @playlist.update_length(@length)
+          @prog_thread = Thread.new { progress_update }
+          @tpropid = @mpv.handle.observe_property("time-pos") { |e|
+            @progress_bar.value = e.value / @length if @length
+          }
+        end
+
+        if @force_play
+          @mpv.handle.set_property("pause" => false)
+          @force_play = false
+        end
       }
-      @mpv.signal_connect("playing_watched") { @playlist.on_playing_watched }
-      @mpv.signal_connect("length_changed") { |w, len| @playlist.update_length(@length = len) }
-      @mpv.signal_connect("title_changed") { |w, t|
-        @playlist.update_title(t)
-        set_title(t)
-      }
-      @mpv.signal_connect("time_pos_changed") { |w, pos| @progress_bar.value = pos / @length.to_f }
-      @mpv.signal_connect("stopped") {
+      @mpv.handle.register_event(Mpv::Event::END_FILE) { |e|
+        @mpv.handle.unobserve_property(@tpropid) if @tpropid
         @progress_bar.value = 0
         set_title(PACKAGE)
-        next_file = @playlist.get_next
-        @really_stop ||= next_file.nil?
-        if !@really_stop
+        @playlist.playing_stopped
+        if e.reason == 0 and next_file = @playlist.get_next
           @mpv.load_file(next_file)
         else
-          @playlist.playing_stopped
+          @stopped = true
           toggle_fullscreen if window.state.fullscreen?
         end
-        @really_stop = false
       }
+
+      if args.include?("--debug")
+        @mpv.handle.request_log_messages("info")
+        @mpv.handle.register_event(Mpv::Event::LOG_MESSAGE) { |e|
+          print(e.text)
+          $stdout.flush
+        }
+      end
 
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
@@ -100,8 +108,10 @@ module Ampv
         present
         Gtk::Drag.finish(dc, true, false, time)
       }
-      @playlist.signal_connect("play_entry") { |w, file| @mpv.load_file(file, true) }
-      @playlist.signal_connect("playing_removed") { @mpv.stop; @really_stop = true }
+      @playlist.signal_connect("play_entry") { |w, file| @mpv.load_file(file); @force_play = true }
+      @playlist.signal_connect("playing_removed") {
+        @mpv.handle.command("stop")
+      }
 
       Gtk::Drag.dest_set(@playlist, Gtk::Drag::DEST_DEFAULT_ALL,
                          [ [ "text/uri-list", 0, 0 ] ],
@@ -167,6 +177,19 @@ module Ampv
       file == dir ? entries[0] : file
     end
 
+    def progress_update
+      watched = 0
+      loop {
+        if watched > @length * 0.5
+          system("#{Config["scrobbler"]} \"#{@playing}\"") if Config["scrobbler"]
+          @playlist.on_playing_watched
+          break
+        end
+        sleep(1)
+        watched += 1 unless @mpv.handle.get_property("pause")
+      }
+    end
+
     def handle_mouse_event(e)
       button = e.event_type == Gdk::Event::SCROLL ? WHEEL_BUTTONS[e.direction] : e.button
       return if Config["mouse_bindings"][e.event_type].nil?
@@ -201,10 +224,6 @@ module Ampv
       case cmd
       when "cycle fullscreen"
         toggle_fullscreen
-      when "cycle pause"
-        @mpv.play_pause
-      when "stop"
-        @mpv.stop
       when "cycle playlist"
         @playlist.visible? ? @playlist.hide : @playlist.show
       when /seek /
@@ -226,15 +245,14 @@ module Ampv
       when "quit"
         quit
       else
-        @mpv.send(cmd) if cmd
+        @mpv.handle.command(cmd) if cmd
       end
       true
     end
 
     def seek(cmd)
-      cmd = "no-osd " + cmd unless cmd.start_with?("no-osd") or !@progress_bar.visible?
-      @mpv.send(cmd)
-      @mpv.send("get_property time-pos")
+      cmd = "no-osd " + cmd if !cmd.start_with?("no-osd") and @progress_bar.visible?
+      @mpv.handle.command(cmd)
     end
 
     def toggle_fullscreen
@@ -301,10 +319,11 @@ module Ampv
       Config["playlist_visible"]     = @playlist.visible?
       Config["playlist_selected"]    = @playing
       Config["playlist"]             = @playlist.get_entries.to_json
-      Config["resume_playback"]      = !@mpv.is_stopped && (watch_later || Config["always_save_position"])
+      Config["resume_playback"]      = !@stopped && (watch_later || Config["always_save_position"])
       Config["progress_bar_visible"] = @progress_bar.visible?
       Config.save
 
+      @prog_thread.kill if @prog_thread
       @mpv.quit(Config["always_save_position"] ? true : watch_later)
       Gtk.main_quit
     end

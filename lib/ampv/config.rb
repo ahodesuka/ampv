@@ -4,6 +4,7 @@ module Ampv
     CONFIG_FILE  = "#{(ENV["XDG_CONFIG_HOME"] || "#{Dir.home}/.config")}/ampv.conf"
     INPUT_CONFIG = File.exists?("#{Dir.home}/.mpv/input.conf") ?
                       "#{Dir.home}/.mpv/input.conf" : File.expand_path("../../../input.conf", __FILE__)
+    MPV_CONFIG   = "#{Dir.home}/.mpv/config"
     KEY_NAMES    = {
       "esc"         => "Escape",
       "space"       => "space",
