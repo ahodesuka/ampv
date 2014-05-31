@@ -68,7 +68,7 @@ module Ampv
             @@mouse_bindings[type][button] = cmd
           elsif !line.empty? and !line.start_with?("#")
             key, cmd = line.match(/^([^\s]+)\s+(.+)$/).captures
-            #next if cmd == "ignore"
+            next if cmd == "ignore"
             if key =~ /(shift|ctrl|alt|meta)\+/i
               key.gsub!(/(shift|ctrl|alt|meta)\+/i, '<\1>')
             end
