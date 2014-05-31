@@ -120,7 +120,7 @@ module Ampv
       loop {
         send("get_property time-pos")
         unless scrobbled or watched < @length * 0.5
-          system("#{Config["scrobbler"]} \"#{@playing}\"") if Config["scrobbler"]
+          system("#{Config[:scrobbler]} \"#{@playing}\"") if Config[:scrobbler]
           signal_emit("playing_watched")
           scrobbled = true
         end
@@ -139,4 +139,3 @@ module Ampv
     end
   end
 end
-

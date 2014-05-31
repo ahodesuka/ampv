@@ -1,7 +1,7 @@
 require "gtk2"
-require "json"
 require "uri"
 require "ampv/config"
+require "ampv/input"
 require "ampv/mpvwidget"
 require "ampv/playlist"
 require "ampv/progressbarwidget"
@@ -40,9 +40,9 @@ module Ampv
       super
 
       set_title(PACKAGE)
-      set_default_size(Config["width"], Config["height"])
+      set_default_size(Config[:width], Config[:height])
       set_window_position(Gtk::Window::POS_CENTER)
-      move(Config["x"], Config["y"]) unless Config["x"] == -1 and Config["y"] == -1
+      move(Config[:x], Config[:y]) if Config[:x] and Config[:y]
 
       add_events(Gdk::Event::POINTER_MOTION_MASK)
       Gtk::Drag.dest_set(self, Gtk::Drag::DEST_DEFAULT_ALL,
@@ -117,12 +117,12 @@ module Ampv
 
       if !files.empty?
         load_files(files)
-      elsif Config["playlist"].length > 0
-        Config["playlist"].each { |x| @playlist.add_file(x["file"], x["length"], x["watched"]) }
-        if Config["resume_playback"]
-          @mpv.load_file(Config["playlist_selected"])
+      elsif Config[:playlist].length > 0
+        Config[:playlist].each { |x| @playlist.add_file(x["file"], x["length"], x["watched"]) }
+        if Config[:resume_playback]
+          @mpv.load_file(Config[:playlist_selected])
         else
-          @playlist.set_selected(Config["playlist_selected"])
+          @playlist.set_selected(Config[:playlist_selected])
         end
       end
 
@@ -169,13 +169,14 @@ module Ampv
 
     def handle_mouse_event(e)
       button = e.event_type == Gdk::Event::SCROLL ? WHEEL_BUTTONS[e.direction] : e.button
-      return if Config["mouse_bindings"][e.event_type].nil?
-      process_cmd(Config["mouse_bindings"][e.event_type][button])
+      return if InputBindings.mouse[e.event_type].nil?
+      process_cmd(InputBindings.mouse[e.event_type][button])
       mouse_cursor_timeout(true)
     end
 
     def handle_keyboard_event(e)
-      process_cmd(Config["key_bindings"][e.keyval])
+      kb = InputBindings.key.find { |x| x.keyval == e.keyval and e.state & x.mods == x.mods }
+      process_cmd(kb.cmd) if kb
     end
 
     def handle_seek_event(e)
@@ -242,7 +243,7 @@ module Ampv
         @progress_bar.show unless @progress_bar_user_hidden
         unfullscreen
       else
-        @progress_bar.hide unless Config["fullscreen_progressbar"]
+        @progress_bar.hide unless Config[:fullscreen_progressbar]
         fullscreen
       end
     end
@@ -290,24 +291,23 @@ module Ampv
     end
 
     def quit(watch_later = false)
-      Config["x"],
-      Config["y"],
-      Config["width"],
-      Config["height"]               = window.geometry unless window.state.fullscreen?
-      Config["playlist_x"],
-      Config["playlist_y"],
-      Config["playlist_width"],
-      Config["playlist_height"]      = @playlist.window.geometry
-      Config["playlist_visible"]     = @playlist.visible?
-      Config["playlist_selected"]    = @playing
-      Config["playlist"]             = @playlist.get_entries.to_json
-      Config["resume_playback"]      = !@mpv.is_stopped && (watch_later || Config["always_save_position"])
-      Config["progress_bar_visible"] = @progress_bar.visible?
+      Config[:x],
+      Config[:y],
+      Config[:width],
+      Config[:height]               = window.geometry unless window.state.fullscreen?
+      Config[:playlist_x],
+      Config[:playlist_y],
+      Config[:playlist_width],
+      Config[:playlist_height]      = @playlist.window.geometry
+      Config[:playlist_visible]     = @playlist.visible?
+      Config[:playlist_selected]    = @playing
+      Config[:playlist]             = @playlist.get_entries
+      Config[:resume_playback]      = !@mpv.is_stopped && (watch_later || Config[:always_save_position])
+      Config[:progress_bar_visible] = @progress_bar.visible?
       Config.save
 
-      @mpv.quit(Config["always_save_position"] ? true : watch_later)
+      @mpv.quit(Config[:always_save_position] ? true : watch_later)
       Gtk.main_quit
     end
   end
 end
-

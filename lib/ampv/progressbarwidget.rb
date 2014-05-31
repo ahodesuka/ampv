@@ -4,11 +4,11 @@ module Ampv
     def initialize
       super
       modify_bg(Gtk::STATE_NORMAL, Gdk::Color.parse("#000"))
-      set_size_request(-1, Config["progress_bar_height"])
+      set_size_request(-1, Config[:progress_bar_height])
 
       @value      = 0
-      @bar_color  = Config["bar_color"]
-      @head_color = Config["head_color"]
+      @bar_color  = Config[:bar_color]
+      @head_color = Config[:head_color]
 
       signal_connect("expose_event") {
         @cx = window.create_cairo_context
@@ -30,4 +30,3 @@ module Ampv
     end
   end
 end
-
