@@ -61,4 +61,3 @@ module Ampv
     end
   end
 end
-

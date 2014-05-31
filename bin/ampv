@@ -7,4 +7,3 @@ end
 require "ampv"
 
 Ampv::MainWindow.new
-

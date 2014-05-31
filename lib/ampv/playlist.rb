@@ -20,9 +20,9 @@ module Ampv
 
       super
       set_title("Playlist - #{PACKAGE}")
-      set_default_size(Config["playlist_width"], Config["playlist_height"])
+      set_default_size(Config[:playlist_width], Config[:playlist_height])
       set_skip_taskbar_hint(true)
-      move(Config["playlist_x"], Config["playlist_y"])
+      move(Config[:playlist_x], Config[:playlist_y])
 
       signal_connect("show") { move(@pos[0], @pos[1]) unless @pos.nil? }
       signal_connect("hide") { @pos = window.root_origin }
@@ -104,7 +104,7 @@ module Ampv
       add(vbox.show_all)
       @menu.show_all
 
-      show if Config["playlist_visible"]
+      show if Config[:playlist_visible]
     end
 
     def count
@@ -244,4 +244,3 @@ module Ampv
     def signal_do_open_file_chooser() end
   end
 end
-
