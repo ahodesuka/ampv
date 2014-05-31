@@ -21,5 +21,6 @@ Gem::Specification.new { |s|
   s.required_ruby_version = ">=1.9.3"
   s.add_runtime_dependency("gtk2")
   s.add_runtime_dependency("json")
+  s.add_runtime_dependency("mpv")
   s.requirements << "mpv git"
 }
