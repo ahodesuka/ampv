@@ -56,7 +56,6 @@ module Ampv
       @playlist     = Playlist.new
 
       @mpv.handle.register_event(Mpv::Event::FILE_LOADED) {
-        @tpropid = false
         @stopped = false
         @playing = @mpv.handle.get_property("path")
         @length  = @mpv.handle.get_property("length")
@@ -71,9 +70,6 @@ module Ampv
         if @length
           @playlist.update_length(@length)
           @prog_thread = Thread.new { progress_update }
-          @tpropid = @mpv.handle.observe_property("time-pos") { |e|
-            @progress_bar.value = e.value / @length if @length
-          }
         end
 
         if @force_play
@@ -81,8 +77,11 @@ module Ampv
           @force_play = false
         end
       }
+      @mpv.handle.register_event(Mpv::Event::TICK) {
+        val = @mpv.handle.get_property("time-pos")
+        @progress_bar.value = val / @length if @length and val
+      }
       @mpv.handle.register_event(Mpv::Event::END_FILE) { |e|
-        @mpv.handle.unobserve_property(@tpropid) if @tpropid
         @progress_bar.value = 0
         set_title(PACKAGE)
         @playlist.playing_stopped
@@ -319,7 +318,7 @@ module Ampv
       Config[:playlist_height]      = @playlist.window.geometry
       Config[:playlist_visible]     = @playlist.visible?
       Config[:playlist_selected]    = @playing
-      Config[:playlist]             = @playlist.get_entries.to_json
+      Config[:playlist]             = @playlist.get_entries
       Config[:resume_playback]      = !@stopped && (watch_later || Config[:always_save_position])
       Config[:progress_bar_visible] = @progress_bar.visible?
       Config.save

@@ -13,12 +13,12 @@ module Ampv
       signal_connect("expose_event") {
         @cx = window.create_cairo_context
         @cx.set_source_color(@bar_color)
-        @cx.rectangle(0, 0, (allocation.width * @value.to_f).round, allocation.height)
+        @cx.rectangle(0, 0, (allocation.width * @value).round, allocation.height)
         @cx.fill
 
         if @value > 0
           @cx.set_source_color(@head_color)
-          @cx.rectangle((allocation.width * @value.to_f).round, 0, 2, allocation.height)
+          @cx.rectangle((allocation.width * @value).round - 2, 0, 2, allocation.height)
           @cx.fill
         end
       }
