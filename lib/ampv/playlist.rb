@@ -122,24 +122,19 @@ module Ampv
       end
     end
 
-    def on_playing_watched
-      @playing_iter[2] = WATCHED_PIXBUF
-      @current_is_watched = true
-    end
-
     def include?(file)
       @model.each { |m, p, iter| return true if iter[0] == file }
       false
     end
 
-    def get_next
+    def next!
       @model.each { |m, p, iter|
         return iter.next! ? iter[0] : nil if iter == @playing_iter
       }
       nil
     end
 
-    def get_prev
+    def prev!
       prev = nil
       @model.each { |m, p, iter|
         return prev if iter == @playing_iter
@@ -147,7 +142,7 @@ module Ampv
       }
     end
 
-    def get_entries
+    def to_h
       entries = [ ]
       @model.each { |m, p, iter|
         entries << {
@@ -159,7 +154,7 @@ module Ampv
       entries
     end
 
-    def get_files
+    def files
       files = [ ]
       @model.each { |m, p, iter| files << iter[0] }
       files
@@ -173,10 +168,9 @@ module Ampv
     end
 
     def set_selected(file)
-      @playing = file
       i = 0
       @model.each { |m, p, iter|
-        if iter[0] == @playing
+        if iter[0] == file
           # reset icon for previous playing entry
           if @playing_iter
             @playing_iter[2] = @current_is_watched ? WATCHED_PIXBUF : nil
@@ -191,8 +185,21 @@ module Ampv
       }
     end
 
+    def playing
+      @playing_iter[0] if @playing_iter
+    end
+
+    def current
+      playing || @treeview.selection.selected_rows[0]
+    end
+
     def playing_stopped
       @playing_iter[2] = nil if @playing_iter and @playing_iter[2] == PLAYING_PIXBUF
+    end
+
+    def playing_watched
+      @playing_iter[2] = WATCHED_PIXBUF
+      @current_is_watched = true
     end
 
     def update_length(length)

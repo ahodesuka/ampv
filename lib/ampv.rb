@@ -42,7 +42,7 @@ module Ampv
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
       signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
         files = sd.uris.map { |f| URI.decode(f).sub(/^file:\/\/[^\/]*/, "") }
-        @playlist.clear(true) unless @playlist.get_files & files == files
+        @playlist.clear(true) unless @playlist.files & files == files
         load_files(files)
         present
         Gtk::Drag.finish(dc, true, false, time)
@@ -56,12 +56,12 @@ module Ampv
 
       @mpv.handle.register_event(Mpv::Event::FILE_LOADED) {
         @stopped = false
-        @playing = @mpv.handle.get_property("path")
         @length  = @mpv.handle.get_property("length")
+        playing  = @mpv.handle.get_property("path")
         title    = @mpv.handle.get_property("media-title")
 
         @mpv.handle.command("show_text ${media-title} 1500") if window.state.fullscreen?
-        @playlist.set_selected(@playing)
+        @playlist.set_selected(playing)
         @playlist.update_title(title)
         set_title(title)
 
@@ -86,7 +86,7 @@ module Ampv
         @prog_thread.kill if @prog_thread
         if e.reason == 0 or e.reason == 2
           @stopped = true
-          if e.reason == 0 and next_file = @playlist.get_next
+          if e.reason == 0 and next_file = @playlist.next!
             @mpv.load_file(next_file)
           else
             toggle_fullscreen if window.state.fullscreen?
@@ -190,8 +190,8 @@ module Ampv
       watched = 0
       loop {
         if watched > @length * 0.5
-          system("#{Config[:scrobbler]} \"#{@playing}\"") if Config[:scrobbler]
-          @playlist.on_playing_watched
+          system("#{Config[:scrobbler]} \"#{@playlist.playing}\"") if Config[:scrobbler]
+          @playlist.playing_watched
           break
         end
         sleep(1)
@@ -241,10 +241,10 @@ module Ampv
       when /add chapter/
         seek(cmd)
       when "playlist_next"
-        file = @playlist.get_next
+        file = @playlist.next!
         @mpv.load_file(file) if file
       when "playlist_prev"
-        file = @playlist.get_prev
+        file = @playlist.prev!
         @mpv.load_file(file) if file
       when "open_file_chooser"
         open_file_chooser
@@ -322,9 +322,9 @@ module Ampv
       Config[:playlist_width],
       Config[:playlist_height]      = @playlist.window.geometry
       Config[:playlist_visible]     = @playlist.visible?
-      Config[:playlist_selected]    = @playing
-      Config[:playlist]             = @playlist.get_entries
-      Config[:resume_playback]      = @playing && !@stopped && (@watch_later || Config[:always_save_position])
+      Config[:playlist_selected]    = @playlist.current
+      Config[:playlist]             = @playlist.to_h
+      Config[:resume_playback]      = @playlist.playing && !@stopped && (@watch_later || Config[:always_save_position])
       Config[:progress_bar_visible] = @progress_bar.visible?
       Config.save
       Gtk.main_quit
