@@ -160,10 +160,10 @@ module Ampv
       files
     end
 
-    def clear(quiet = false)
+    def clear
       @titles.clear
       @model.clear
-      signal_emit("playing_removed") unless quiet or @playing_iter.nil?
+      signal_emit("playing_removed") if @playing_iter
       @playing_iter = nil
     end
 

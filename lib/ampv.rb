@@ -42,7 +42,8 @@ module Ampv
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
       signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
         files = sd.uris.map { |f| URI.decode(f).sub(/^file:\/\/[^\/]*/, "") }
-        @playlist.clear(true) unless @playlist.files & files == files
+        @playlist.clear unless @playlist.files & files == files
+        @force_play = true
         load_files(files)
         present
         Gtk::Drag.finish(dc, true, false, time)
