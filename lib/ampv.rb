@@ -272,6 +272,10 @@ module Ampv
         unfullscreen
       else
         @progress_bar.hide unless Config[:fullscreen_progressbar]
+        Config[:x],
+        Config[:y],
+        Config[:width],
+        Config[:height] = window.geometry
         fullscreen
       end
     end
