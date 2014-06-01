@@ -127,7 +127,7 @@ module Ampv
       if !files.empty?
         load_files(files)
       elsif Config[:playlist].length > 0
-        Config[:playlist].each { |x| @playlist.add_file(x["file"], x["length"], x["watched"]) }
+        Config[:playlist].each { |x| @playlist.add_file(x[:file], x[:length], x[:watched]) }
         if Config[:resume_playback]
           @mpv.load_file(Config[:playlist_selected])
         else
@@ -180,7 +180,7 @@ module Ampv
       watched = 0
       loop {
         if watched > @length * 0.5
-          system("#{Config["scrobbler"]} \"#{@playing}\"") if Config["scrobbler"]
+          system("#{Config[:scrobbler]} \"#{@playing}\"") if Config[:scrobbler]
           @playlist.on_playing_watched
           break
         end
