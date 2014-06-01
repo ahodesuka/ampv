@@ -64,7 +64,6 @@ module Ampv
         @playlist.set_selected(@playing)
         @playlist.update_title(title)
         set_title(title)
-        @prog_thread.kill if @prog_thread
 
         if @length
           @playlist.update_length(@length)
@@ -84,9 +83,10 @@ module Ampv
         @progress_bar.value = 0
         set_title(PACKAGE)
         @playlist.playing_stopped
-        if e.reason == 0
+        @prog_thread.kill if @prog_thread
+        if e.reason == 0 or e.reason == 2
           @stopped = true
-          if next_file = @playlist.get_next
+          if e.reason == 0 and next_file = @playlist.get_next
             @mpv.load_file(next_file)
           else
             toggle_fullscreen if window.state.fullscreen?
