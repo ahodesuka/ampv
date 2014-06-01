@@ -36,7 +36,7 @@ module Ampv
                          [ [ "text/uri-list", 0, 0 ] ],
                          Gdk::DragContext::ACTION_COPY)
 
-      signal_connect("delete_event") { quit }
+      signal_connect("delete_event") { @mpv.quit(Config[:always_save_position]) }
       signal_connect("scroll_event") { |w, e| handle_mouse_event(e) }
       signal_connect("button_press_event") { |w, e| handle_mouse_event(e) }
       signal_connect("key_press_event") { |w, e| handle_keyboard_event(e) }
