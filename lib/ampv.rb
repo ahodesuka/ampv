@@ -84,11 +84,13 @@ module Ampv
         @progress_bar.value = 0
         set_title(PACKAGE)
         @playlist.playing_stopped
-        if e.reason == 0 and next_file = @playlist.get_next
-          @mpv.load_file(next_file)
-        else
+        if e.reason == 0
           @stopped = true
-          toggle_fullscreen if window.state.fullscreen?
+          if next_file = @playlist.get_next
+            @mpv.load_file(next_file)
+          else
+            toggle_fullscreen if window.state.fullscreen?
+          end
         end
       }
       @mpv.handle.register_event(Mpv::Event::SHUTDOWN) { quit }
