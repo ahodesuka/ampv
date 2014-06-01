@@ -16,18 +16,13 @@ end
 module Ampv
   class MpvWidget < Gtk::EventBox
 
-    ENV["PATH"].split(":").each { |x|
-      if File.executable?("#{x}/mpv")
-        PATH = "#{x}/mpv"
-        break
-      end
-    }
-
     attr_reader :handle
+    attr_writer :quitting
 
     def initialize
       super
 
+      @quitting = false
       @handle = Mpv::Handle.create
       begin
         @handle.load_config_file(Config::MPV_CONFIG) if File.file?(Config::MPV_CONFIG)
@@ -42,7 +37,7 @@ module Ampv
       @widget.signal_connect("realize") {
         @handle.set_option({ "wid" => @widget.window.xid })
         @handle.wakeup_callback {
-          while (e = @handle.wait_event(0)).type != Mpv::Event::NONE
+          while !@quitting and (e = @handle.wait_event(0)).type != Mpv::Event::NONE
             @handle.process_event(e)
           end
         }

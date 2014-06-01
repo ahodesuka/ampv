@@ -91,6 +91,7 @@ module Ampv
           toggle_fullscreen if window.state.fullscreen?
         end
       }
+      @mpv.handle.register_event(Mpv::Event::SHUTDOWN) { quit }
 
       if args.include?("--debug")
         @mpv.handle.request_log_messages("info")
@@ -240,9 +241,9 @@ module Ampv
       when "cycle progress_bar"
         toggle_progress_bar
       when "quit_watch_later"
-        quit(true)
+        @mpv.quit(@watch_later = true)
       when "quit"
-        quit
+        @mpv.quit
       else
         @mpv.handle.command(cmd) if cmd
       end
@@ -306,7 +307,9 @@ module Ampv
       exit
     end
 
-    def quit(watch_later = false)
+    def quit
+      @mpv.quitting = true
+      @prog_thread.kill if @prog_thread
       Config[:x],
       Config[:y],
       Config[:width],
@@ -318,12 +321,9 @@ module Ampv
       Config[:playlist_visible]     = @playlist.visible?
       Config[:playlist_selected]    = @playing
       Config[:playlist]             = @playlist.get_entries
-      Config[:resume_playback]      = !@stopped && (watch_later || Config[:always_save_position])
+      Config[:resume_playback]      = !@stopped && (@watch_later || Config[:always_save_position])
       Config[:progress_bar_visible] = @progress_bar.visible?
       Config.save
-
-      @prog_thread.kill if @prog_thread
-      @mpv.quit(Config[:always_save_position] ? true : watch_later)
       Gtk.main_quit
     end
   end
