@@ -301,9 +301,7 @@ module Ampv
     end
 
     def print_version
-      puts("#{PACKAGE} - v#{VERSION} (C) 2013-2014 ahoka\n" +
-           `ruby --version` +
-           `#{MpvWidget::PATH} --version`)
+      puts("#{PACKAGE} - v#{VERSION} (C) 2013-2014 ahoka")
       exit
     end
 
