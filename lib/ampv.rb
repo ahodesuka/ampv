@@ -147,7 +147,7 @@ module Ampv
         file = File.expand_path(file)
       end
 
-      return unless File.directory?(file) or valid_video_file?(file) or uri
+      return unless File.directory?(file) or File.file?(file) or uri
 
       if @playlist.count == 0 and auto_add and !uri
         file = create_playlist(file)
@@ -171,8 +171,14 @@ module Ampv
     def create_playlist(file)
       dir     = File.directory?(file) ? file : File.dirname(file)
       entries = Dir.entries(dir).sort.map { |x| "#{dir}/#{x}" }
-      entries.delete_if { |x| x[0] == "." || !valid_video_file?(x) }
-      entries.each { |x| @playlist.add_file(x) }
+      entries.delete_if { |x|
+        if x == file or (File.file?(x) and VIDEO_EXTS.include?(File.extname(x).downcase))
+          @playlist.add_file(x)
+          false
+        else
+          true
+        end
+      }
       file == dir ? entries[0] : file
     end
 
@@ -273,10 +279,6 @@ module Ampv
         @progress_bar.show
         @progress_bar_user_hidden = false
       end
-    end
-
-    def valid_video_file?(x)
-      return (x and File.exists?(x) and File.file?(x) and VIDEO_EXTS.include?(File.extname(x).downcase))
     end
 
     def open_file_chooser
