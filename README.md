@@ -22,8 +22,8 @@ Or if you are using Gentoo/Funtoo you can use [this ebuild](https://gist.github.
 
 or
 
-    $ ampv "videofile"
+    $ ampv video_file.mkv
 
 ampv input configuration is loaded from `~/.mpv/input.conf` - and ignores all default mpv bindings.<br>
 An example input.conf is included in this repository.  This example config is used if there is none in the previously stated location.
-mpv will retain settings in `~/.mpv/config` except for the `autofit*` and `geometry` settings.
+mpv will retain settings in `~/.mpv/config` except for anything that has to do with window creation.
