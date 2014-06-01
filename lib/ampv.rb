@@ -10,7 +10,6 @@ require "ampv/version"
 module Ampv
   class MainWindow < Gtk::Window
 
-    INPUT_CONF    = "#{ENV["HOME"]}/.mpv/input.conf"
     VIDEO_EXTS    = [ ".avi", ".mkv", ".mp4", ".mpeg", ".mpg", ".ogm", ".ogv", ".rm", ".ts", ".wmv" ]
     WHEEL_BUTTONS = {
       Gdk::EventScroll::UP    => 4,
