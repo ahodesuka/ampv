@@ -69,14 +69,16 @@ module Ampv
           elsif !line.empty? and !line.start_with?("#")
             key, cmd = line.match(/^([^\s]+)\s+(.+)$/).captures
             next if cmd == "ignore"
-            if key =~ /(shift|ctrl|alt|meta)\+/i
+            if (keyval = Gdk::Keyval.from_name(key)) != 0
+              kb = KeyBinding.new(keyval, 0, cmd)
+            else
               key.gsub!(/(shift|ctrl|alt|meta)\+/i, '<\1>')
-            end
-            kb = KeyBinding.new(*Gtk::Accelerator.parse(key), cmd)
-            if kb.keyval == 0
-              key.gsub!(/<(shift|ctrl|alt|meta)>/i, "")
-              unless kb.keyval = KEY_VALS[key.upcase]
-                kb.keyval = key.ord
+              kb = KeyBinding.new(*Gtk::Accelerator.parse(key), cmd)
+              if kb.keyval == 0
+                key.gsub!(/<(shift|ctrl|alt|meta)>/i, "")
+                unless kb.keyval = KEY_VALS[key.upcase]
+                  kb.keyval = key.ord
+                end
               end
             end
             @@key_bindings << kb
