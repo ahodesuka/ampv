@@ -313,7 +313,6 @@ module Ampv
 
     def quit
       @mpv.quitting = true
-      @prog_thread.kill if @prog_thread
       Config[:x],
       Config[:y],
       Config[:width],
