@@ -129,7 +129,7 @@ module Ampv
 
       if !files.empty?
         load_files(files)
-      elsif Config[:playlist].length > 0
+      elsif Config[:playlist] and Config[:playlist].length > 0
         Config[:playlist].each { |x| @playlist.add_file(x[:file], x[:length], x[:watched]) }
         if Config[:playlist_selected]
           if Config[:resume_playback]
@@ -268,10 +268,10 @@ module Ampv
 
     def toggle_fullscreen
       if window.state.fullscreen?
-        @progress_bar.show unless @progress_bar_user_hidden
+        @progress_bar.show
         unfullscreen
       else
-        @progress_bar.hide unless Config[:fullscreen_progressbar]
+        @progress_bar.hide
         Config[:x],
         Config[:y],
         Config[:width],
@@ -283,10 +283,8 @@ module Ampv
     def toggle_progress_bar
       if @progress_bar.visible?
         @progress_bar.hide
-        @progress_bar_user_hidden = true
-      else
+      elsif !window.state.fullscreen?
         @progress_bar.show
-        @progress_bar_user_hidden = false
       end
     end
 

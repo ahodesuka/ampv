@@ -11,7 +11,6 @@ module Ampv
         :height                 => Gdk::Screen.default.width > 1280 ? 724  : 484,
         :x                      => nil,
         :y                      => nil,
-        :fullscreen_progressbar => false,
         :progress_bar_visible   => true,
         :progress_bar_height    => 4,
         :bar_color              => Gdk::Color.parse("#8f5b5b"),
@@ -22,9 +21,6 @@ module Ampv
         :playlist_y             => 0,
         :playlist_visible       => true,
         :always_save_position   => false,
-        :resume_playback        => false,
-        :scrobbler              => nil,
-        :playlist_selected      => nil
     }
     @@config = { }
 
