@@ -19,10 +19,21 @@ module Ampv
     }
 
     def initialize
-      args  = ARGV.reject { |x| x[0] != "-" }
+      args  = ARGV.reject { |x| !x.start_with?("--") }
       files = ARGV - args
 
-      print_version if args.include?("--version")
+      if args.include?("--help")
+        puts("Usage: #{PACKAGE} [options] [file]\n\n")
+        puts("options:")
+        puts(" --verbose  enables mpv log messages")
+        puts(" --help     display this help and exit")
+        puts(" --version output version information and exit\n\n")
+        exit
+      elsif args.include?("--version")
+        puts("#{PACKAGE} - v#{VERSION} (C) 2013-2014 ahoka")
+        exit
+      end
+
       Config.load
       super
 
@@ -96,13 +107,32 @@ module Ampv
       }
       @mpv.handle.register_event(Mpv::Event::SHUTDOWN) { quit }
 
-      if args.include?("--debug")
+      if args.include?("--verbose")
+        args.delete("--verbose")
         @mpv.handle.request_log_messages("info")
         @mpv.handle.register_event(Mpv::Event::LOG_MESSAGE) { |e|
           print(e.text)
           $stdout.flush
         }
       end
+
+      args.each { |x|
+        x = x.sub(/^--/, "")
+        key, val = x.split("=")
+        if !val
+          val = key.start_with?("no-")
+          key.sub!(/^no-/, "") unless val
+        elsif val =~ /^\d+$/
+          val = val.to_i
+        end
+        begin
+          @mpv.handle.set_option({ key => val })
+        rescue Mpv::OptionError,
+               Mpv::OptionFormatError,
+               Mpv::OptionNotFound => e
+          warn("#{e.message}, #{key} => #{val}")
+        end
+      }
 
       @playlist.signal_connect("open_file_chooser") { open_file_chooser }
       @playlist.signal_connect("drag_data_received") { |w, dc, x, y, sd, type, time|
@@ -307,11 +337,6 @@ module Ampv
 
       load_files(dialog.filenames) if dialog.run == Gtk::Dialog::RESPONSE_ACCEPT
       dialog.destroy
-    end
-
-    def print_version
-      puts("#{PACKAGE} - v#{VERSION} (C) 2013-2014 ahoka")
-      exit
     end
 
     def quit

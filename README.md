@@ -18,11 +18,7 @@ Or if you are using Gentoo/Funtoo you can use [this ebuild](https://gist.github.
 
 ## Usage
 
-    $ ampv
-
-or
-
-    $ ampv video_file.mkv
+    $ ampv [options] [file]
 
 ampv input configuration is loaded from `~/.mpv/input.conf` - and ignores all default mpv bindings.<br>
 An example input.conf is included in this repository.  This example config is used if there is none in the previously stated location.
